@@ -1,7 +1,7 @@
 name: Update Mod Registry
 on:
   repository_dispatch:
-    types: [add_mod]
+    types: [add_mod, remove_mod]
 
 permissions:
   contents: write
@@ -29,9 +29,16 @@ jobs:
               
           with open('registry.json', 'r', encoding='utf-8') as f:
               reg = json.load(f)
-              
-          reg['mods'] = [m for m in reg['mods'] if m['id'] != payload['id']]
-          reg['mods'].append(payload)
+          
+          # Если это удаление
+          if '${{ github.event.action }}' == 'remove_mod':
+              reg['mods'] = [m for m in reg['mods'] if m['id'] != payload['id']]
+              print(f'Removed mod: {payload[\"id\"]}')
+          else:
+              # Если это добавление/обновление
+              reg['mods'] = [m for m in reg['mods'] if m['id'] != payload['id']]
+              reg['mods'].append(payload)
+              print(f'Added/Updated mod: {payload[\"id\"]}')
           
           with open('registry.json', 'w', encoding='utf-8') as f:
               json.dump(reg, f, indent=2, ensure_ascii=False)
@@ -42,5 +49,5 @@ jobs:
           git config --global user.name 'Workmods Bot'
           git config --global user.email 'bot@workmods.local'
           git add registry.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Added/Updated mod: ${{ github.event.client_payload.name }}"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Registry update: ${{ github.event.action }} ${{ github.event.client_payload.name }}"
           git push
