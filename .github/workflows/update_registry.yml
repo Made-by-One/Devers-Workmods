@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Update registry.json
         env:
@@ -21,18 +21,17 @@ jobs:
           python -c "
           import json, os
           
-          # Проверка секрета
-          if os.environ.get('BOT_SECRET') != os.environ['PAYLOAD'].get('client_payload', {}).get('secret'):
+          payload = json.loads(os.environ['PAYLOAD'])
+          
+          if os.environ.get('BOT_SECRET') != payload.get('secret'):
               print('Invalid secret. Aborting.')
               exit(0)
               
           with open('registry.json', 'r', encoding='utf-8') as f:
               reg = json.load(f)
-          payload = json.loads(os.environ['PAYLOAD'])
-          client_data = payload.get('client_payload', {})
-          
-          reg['mods'] = [m for m in reg['mods'] if m['id'] != client_data['id']]
-          reg['mods'].append(client_data)
+              
+          reg['mods'] = [m for m in reg['mods'] if m['id'] != payload['id']]
+          reg['mods'].append(payload)
           
           with open('registry.json', 'w', encoding='utf-8') as f:
               json.dump(reg, f, indent=2, ensure_ascii=False)
