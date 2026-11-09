@@ -1,8 +1,10 @@
 name: Update Mod Registry
-
 on:
   repository_dispatch:
     types: [add_mod]
+
+permissions:
+  contents: write # <--- ЭТО ВАЖНО, чтобы Action мог делать commit и push
 
 jobs:
   update:
@@ -18,20 +20,11 @@ jobs:
         run: |
           python -c "
           import json, os
-          
-          # Читаем текущий реестр
           with open('registry.json', 'r', encoding='utf-8') as f:
               reg = json.load(f)
-              
           payload = json.loads(os.environ['PAYLOAD'])
-          
-          # Удаляем старую версию мода, если она там уже есть
           reg['mods'] = [m for m in reg['mods'] if m['id'] != payload['id']]
-          
-          # Добавляем новую версию
           reg['mods'].append(payload)
-          
-          # Сохраняем обратно
           with open('registry.json', 'w', encoding='utf-8') as f:
               json.dump(reg, f, indent=2, ensure_ascii=False)
           "
@@ -42,6 +35,5 @@ jobs:
           git config --global user.name 'Workmods Bot'
           git config --global user.email 'bot@workmods.local'
           git add registry.json
-          # Проверяем, есть ли изменения, чтобы не было ошибки, если мод не изменился
           git diff --quiet && git diff --staged --quiet || git commit -m "Added/Updated mod: ${{ github.event.client_payload.name }}"
           git push
