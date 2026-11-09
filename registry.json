@@ -1,3 +1,13 @@
 {
-  "mods": []
+  "mods": [
+    {
+      "download_url": "https://github.com/Scody0/test/releases/download/v1.0/d7191407.zip",
+      "id": "d7191407",
+      "name": "test name mod",
+      "repo": "Scody0/test",
+      "secret": "super_secret_workmods_2026",
+      "sha256": "e79366bc329c36595179f765f8a6ac677a5f539053513fe25c49d4de87269f77",
+      "version": "1.0"
+    }
+  ]
 }
