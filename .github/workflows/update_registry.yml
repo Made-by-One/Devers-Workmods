@@ -1,4 +1,5 @@
 name: Update Mod Registry
+
 on:
   repository_dispatch:
     types: [add_mod]
@@ -11,31 +12,36 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Update registry.json
+        if: github.event.client_payload.secret == secrets.BOT_SECRET_TOKEN
         env:
           PAYLOAD: ${{ toJson(github.event.client_payload) }}
         run: |
           python -c "
           import json, os
           
-          with open('registry.json', 'r') as f:
+          # Читаем текущий реестр
+          with open('registry.json', 'r', encoding='utf-8') as f:
               reg = json.load(f)
               
           payload = json.loads(os.environ['PAYLOAD'])
           
-          # Удаляем старую версию, если она есть
+          # Удаляем старую версию мода, если она там уже есть
           reg['mods'] = [m for m in reg['mods'] if m['id'] != payload['id']]
           
-          # Добавляем новую
+          # Добавляем новую версию
           reg['mods'].append(payload)
           
-          with open('registry.json', 'w') as f:
-              json.dump(reg, f, indent=2)
+          # Сохраняем обратно
+          with open('registry.json', 'w', encoding='utf-8') as f:
+              json.dump(reg, f, indent=2, ensure_ascii=False)
           "
 
       - name: Commit changes
+        if: github.event.client_payload.secret == secrets.BOT_SECRET_TOKEN
         run: |
           git config --global user.name 'Workmods Bot'
           git config --global user.email 'bot@workmods.local'
           git add registry.json
-          git commit -m "Added/Updated mod: ${{ github.event.client_payload.name }}"
+          # Проверяем, есть ли изменения, чтобы не было ошибки, если мод не изменился
+          git diff --quiet && git diff --staged --quiet || git commit -m "Added/Updated mod: ${{ github.event.client_payload.name }}"
           git push
