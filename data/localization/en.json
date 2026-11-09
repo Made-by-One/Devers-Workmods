@@ -1,0 +1,13 @@
+{
+    "catalog": "CATALOG",
+    "installed": "INSTALLED",
+    "downloads": "DOWNLOADS",
+    "authors": "AUTHORS",
+    "settings": "SETTINGS",
+    "search": "SEARCH MODS...",
+    "install": "INSTALL",
+    "update": "UPDATE",
+    "uninstall": "UNSUBSCRIBE",
+    "check_updates": "CHECK UPDATES",
+    "refresh": "REFRESH"
+}
