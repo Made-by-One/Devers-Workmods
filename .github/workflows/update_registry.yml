@@ -4,7 +4,7 @@ on:
     types: [add_mod]
 
 permissions:
-  contents: write # <--- ЭТО ВАЖНО, чтобы Action мог делать commit и push
+  contents: write
 
 jobs:
   update:
@@ -14,23 +14,31 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Update registry.json
-        if: github.event.client_payload.secret == secrets.BOT_SECRET_TOKEN
         env:
           PAYLOAD: ${{ toJson(github.event.client_payload) }}
+          BOT_SECRET: ${{ secrets.BOT_SECRET_TOKEN }}
         run: |
           python -c "
           import json, os
+          
+          # Проверка секрета
+          if os.environ.get('BOT_SECRET') != os.environ['PAYLOAD'].get('client_payload', {}).get('secret'):
+              print('Invalid secret. Aborting.')
+              exit(0)
+              
           with open('registry.json', 'r', encoding='utf-8') as f:
               reg = json.load(f)
           payload = json.loads(os.environ['PAYLOAD'])
-          reg['mods'] = [m for m in reg['mods'] if m['id'] != payload['id']]
-          reg['mods'].append(payload)
+          client_data = payload.get('client_payload', {})
+          
+          reg['mods'] = [m for m in reg['mods'] if m['id'] != client_data['id']]
+          reg['mods'].append(client_data)
+          
           with open('registry.json', 'w', encoding='utf-8') as f:
               json.dump(reg, f, indent=2, ensure_ascii=False)
           "
 
       - name: Commit changes
-        if: github.event.client_payload.secret == secrets.BOT_SECRET_TOKEN
         run: |
           git config --global user.name 'Workmods Bot'
           git config --global user.email 'bot@workmods.local'
