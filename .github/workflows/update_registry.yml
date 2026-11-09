@@ -1,0 +1,41 @@
+name: Update Mod Registry
+on:
+  repository_dispatch:
+    types: [add_mod]
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update registry.json
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          python -c "
+          import json, os
+          
+          with open('registry.json', 'r') as f:
+              reg = json.load(f)
+              
+          payload = json.loads(os.environ['PAYLOAD'])
+          
+          # Удаляем старую версию, если она есть
+          reg['mods'] = [m for m in reg['mods'] if m['id'] != payload['id']]
+          
+          # Добавляем новую
+          reg['mods'].append(payload)
+          
+          with open('registry.json', 'w') as f:
+              json.dump(reg, f, indent=2)
+          "
+
+      - name: Commit changes
+        run: |
+          git config --global user.name 'Workmods Bot'
+          git config --global user.email 'bot@workmods.local'
+          git add registry.json
+          git commit -m "Added/Updated mod: ${{ github.event.client_payload.name }}"
+          git push
