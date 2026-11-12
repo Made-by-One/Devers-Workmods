@@ -43,12 +43,30 @@ Guidelines:
   "description": "Neon HUD replacement for the tactical screen.",
   "entry_asset": "NeonHud",
   "bundles": ["neon-ui.bundle", "bundles/shared.bundle"],
+  "engine": "unity",
+  "unity_version": "2021.3",
+  "platforms": ["windows", "linux", "macos"],
+  "min_client_version": "1.0b",
+  "min_sdk_version": "1.0",
   "tags": ["ui", "hud"]
 }
 ```
 
 Everything except the content itself is optional, but `name` and `version` are
-required by the client when publishing.
+required by the client when publishing. Compatibility fields are optional too,
+but they let the validator reject a package that cannot run on the target:
+
+| Field | Meaning |
+|---|---|
+| `engine` / `sdk` | `unity` for the current SDK |
+| `unity_version` | Minimum Unity version the mod was built for |
+| `min_unity_version`, `max_unity_version` | Optional explicit range |
+| `platforms` | Supported platforms, e.g. `windows`, `linux`, `macos`, `android`, `ios` |
+| `min_client_version` | Oldest Workmods client that can install it |
+| `min_sdk_version` | Oldest Unity SDK that can load it |
+
+`workmod.json` may also use a `compatibility` object with the same keys. When a
+field is absent the validator warns instead of guessing.
 
 ## Terminal workflow (optional)
 
@@ -67,6 +85,10 @@ python -m workmods pack neon-ui --out dist/neon-ui.zip
 
 # Re-open the final ZIP and verify its contents and digest before uploading
 python -m workmods validate-package dist/neon-ui.zip --sha256 <expected-digest>
+
+# Check compatibility with a concrete target
+python -m workmods validate-package dist/neon-ui.zip \
+  --engine unity --unity-version 2022.3 --platform windows --platform linux
 ```
 
 Add `--json` to `validate`, `validate-package` or `pack` for machine-readable

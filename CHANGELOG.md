@@ -3,6 +3,32 @@
 All notable changes to Workmods. The format follows Keep a Changelog and the
 project uses semantic versioning.
 
+## [1.1c] — 2026-11-12
+
+Third public beta. Connects the new profile and update features to the desktop
+GUI, verifies release checksums/signatures and ships signed release metadata.
+
+### Added
+
+- **Settings → Application Updates**: check GitHub Releases, open the download
+  page, download and install on packaged builds, and roll back the last update.
+- **Installed → Mod Profile**: save/apply enabled/disabled sets, edit settings
+  presets, and export/import profiles as JSON.
+- On-disk enable/disable via the hidden `.workmods-disabled` folder; the SDK and
+  scanner ignore it automatically.
+- `SHA256SUMS` on every release and optional `SHA256SUMS.sig` from the
+  `RELEASE_SIGNING_KEY` secret; the updater verifies both when configured.
+- `docs/RELEASE_SIGNING.md` with key generation, secret setup and manual checks.
+- Compatibility fields in the publishing guide and localized README updates.
+
+### Changed
+
+- Version bumped to `1.1c`; download links and release notes updated.
+- `requirements.txt` now includes `cryptography` for RSA/ECDSA verification.
+- Updater extracts `Workmods`/`Workmods.exe` from ZIP/TAR release archives before
+  replacing the executable.
+- 84 Python tests total.
+
 ## [1.1b] — 2026-11-12
 
 Second public beta. Adds mod profiles, client update infrastructure and package

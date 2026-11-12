@@ -1,7 +1,11 @@
 import hashlib
+import io
+import tarfile
 from pathlib import Path
 
 import pytest
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 from workmods.updater import (
     ClientUpdater,
@@ -10,6 +14,7 @@ from workmods.updater import (
     UpdateError,
     is_newer,
     verify_sha256,
+    verify_signature_data,
 )
 
 
@@ -81,6 +86,35 @@ def test_check_for_updates_uses_release_client(tmp_path):
     release = updater.check_for_updates()
     assert release is not None
     assert release.version == "1.1b"
+
+
+def test_rsa_signature_verification(tmp_path):
+    data = b"signed release checksums\n"
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_key = key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    signature = key.sign(data, padding.PKCS1v15(), hashes.SHA256())
+
+    assert verify_signature_data(data, signature, public_key=public_key)
+    assert not verify_signature_data(data + b"x", signature, public_key=public_key)
+
+
+def test_apply_update_extracts_archive_executable(tmp_path):
+    target = tmp_path / "Workmods"
+    target.write_bytes(b"old")
+    update = tmp_path / "Workmods-linux-x86_64.tar.gz"
+    payload = b"new"
+    with tarfile.open(update, "w:gz") as archive:
+        info = tarfile.TarInfo("Workmods")
+        info.size = len(payload)
+        archive.addfile(info, io.BytesIO(payload))
+
+    updater = _updater(tmp_path, target)
+    result = updater.apply_update(update, version="1.1c")
+    assert result.applied
+    assert target.read_bytes() == b"new"
 
 
 def test_download_rejects_release_without_asset(tmp_path):

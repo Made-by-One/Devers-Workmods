@@ -4,7 +4,7 @@
 
 **Sprachen:** [English](README.md) · [Русский](README.ru.md) · Deutsch · [Español](README.es.md) · [Français](README.fr.md) · [中文](README.zh.md)
 
-**Status:** `v1.1b` — öffentliche Beta mit überarbeitetem Client. [Neueste Beta herunterladen](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) oder zuerst die [bekannten Einschränkungen](#einschränkungen) lesen.
+**Status:** `v1.1c` — öffentliche Beta mit überarbeitetem Client. [Neueste Beta herunterladen](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c) oder zuerst die [bekannten Einschränkungen](#einschränkungen) lesen.
 
 Workmods besteht aus drei Teilen mit einem gemeinsamen Format:
 
@@ -33,7 +33,7 @@ Workmods-Client ── ZIP + Release ──► Repository des Mods
 
 ## Download
 
-Fertige Builds werden in den [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) veröffentlicht:
+Fertige Builds werden in den [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c) veröffentlicht:
 
 | System | Archiv |
 |---|---|
@@ -42,6 +42,12 @@ Fertige Builds werden in den [GitHub Releases](https://github.com/Made-by-One/De
 | macOS | `Workmods-macos.zip` |
 
 Archiv entpacken und `Workmods.exe`, `Workmods` oder `Workmods.app` starten. Python und PyQt6 sind enthalten. Der macOS-Build ist nicht signiert: beim ersten Start **Rechtsklick → Öffnen** verwenden. Windows SmartScreen kann ebenfalls warnen.
+
+### Neu in 1.1c
+
+- **Einstellungen → App-Updates**: GitHub-Release prüfen, `SHA256SUMS` und optionale Signatur verifizieren, atomar installieren und bei Fehlern zurückrollen.
+- **Installiert → Mod-Profil**: Aktivierte/deaktivierte Sets, Einstellungs-Presets, Anwenden über `.workmods-disabled`, JSON-Export und -Import.
+- Releases enthalten `SHA256SUMS` und, wenn das Signatur-Secret gesetzt ist, `SHA256SUMS.sig`. Siehe [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
 
 ---
 
@@ -160,7 +166,7 @@ Vollständige Feldreferenz und Einreichungsformat: [docs/REGISTRY_SCHEMA.md](doc
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 81 Tests, kein Display nötig
+pytest              # 84 Tests, kein Display nötig
 ruff check workmods tests
 ```
 

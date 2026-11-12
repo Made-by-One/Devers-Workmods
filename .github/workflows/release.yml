@@ -186,6 +186,22 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Generate checksums and sign them
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          cd release-assets
+          sha256sum Workmods-* > SHA256SUMS
+          if [ -n "$RELEASE_SIGNING_KEY" ]; then
+            printf '%s' "$RELEASE_SIGNING_KEY" | base64 -d > /tmp/release-signing-key.pem
+            openssl dgst -sha256 -sign /tmp/release-signing-key.pem -out SHA256SUMS.sig SHA256SUMS
+            rm -f /tmp/release-signing-key.pem
+            echo "Signed release checksums."
+          else
+            echo "::warning::RELEASE_SIGNING_KEY is not set; publishing unsigned checksums."
+          fi
+          cat SHA256SUMS
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -193,17 +209,18 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Workmods ${{ needs.prepare.outputs.version }} — public beta
           body: |
-            Second public beta of Workmods. This release adds mod profiles,
-            client update infrastructure with rollback, and package compatibility
-            checks on top of the 1.0b authoring tools.
+            Third public beta of Workmods. This release connects updates and mod
+            profiles to the desktop GUI and adds signed release checksums.
 
             **Highlights**
-            - Mod profiles: enabled/disabled sets, settings presets, JSON export/import.
-            - Client updater: release checks, SHA-256 and optional signature verification,
-              atomic replacement and rollback on failure.
-            - `validate-package` now checks engine, Unity version, platform, client and
+            - Settings → Application Updates: check, verify, install and roll back.
+            - Installed → Mod Profile: enabled/disabled sets, settings presets,
+              JSON export/import, and real on-disk enable/disable.
+            - `SHA256SUMS` on every release; `SHA256SUMS.sig` when the signing secret
+              is configured.
+            - `validate-package` checks engine, Unity version, platform, client and
               SDK compatibility declared in `workmod.json`.
-            - Unity SDK example and smoke suite from 1.0b remain included.
+            - Unity SDK example and smoke suite remain included.
 
             **Downloads**
             - Windows x64: `Workmods-windows-x86_64.zip`
@@ -220,7 +237,7 @@ jobs:
 
             See the [README](https://github.com/Made-by-One/Devers-Workmods#readme) and
             [CHANGELOG](https://github.com/Made-by-One/Devers-Workmods/blob/main/CHANGELOG.md)
-            for the full 1.1b notes.
+            for the full 1.1c notes.
           files: release-assets/*
           prerelease: true
           fail_on_unmatched_files: true

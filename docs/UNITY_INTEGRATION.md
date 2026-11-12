@@ -49,6 +49,10 @@ default install folder is `~/DeversMods/<game_id>`**, so pick one of these:
 `WorkmodsSDK.DefaultModsRoot` returns the default; `WorkmodsSDK.ModsRoot` what is
 actually scanned.
 
+Disabled mods live in `<modsRoot>/.workmods-disabled/<modId>`. The SDK skips
+directories whose names start with `.`, so **Disable** in the client takes effect
+on the next scan without deleting anything. `Rescan()` after a change.
+
 ## 3. Mod manifest
 
 `workmod.json` is optional. Missing fields fall back to the folder name and to

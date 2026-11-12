@@ -17,6 +17,7 @@ from workmods.github_api import GitHubClient
 from workmods.models import DEFAULT_GAME_ID, Mod
 from workmods.publisher import ModPublisher, PublishRequest, PublishResult
 from workmods.storage import download_file, install_package, sha256_file
+from workmods.updater import ClientUpdater, UpdateError
 
 
 class InstallWorker(QThread):
@@ -72,6 +73,72 @@ class InstallWorker(QThread):
             self.failed.emit(str(exc))
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+class UpdateCheckWorker(QThread):
+    """Ask GitHub Releases whether a newer client exists."""
+
+    succeeded = pyqtSignal(object)  # ReleaseInfo or None
+    failed = pyqtSignal(str)
+
+    def __init__(self, updater: ClientUpdater, parent=None):
+        super().__init__(parent)
+        self.updater = updater
+
+    def run(self) -> None:
+        try:
+            self.succeeded.emit(self.updater.check_for_updates())
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class UpdateInstallWorker(QThread):
+    """Download, verify and atomically apply a client update."""
+
+    progress = pyqtSignal(int, str)
+    succeeded = pyqtSignal(object)  # UpdateResult
+    failed = pyqtSignal(str)
+
+    def __init__(
+        self,
+        updater: ClientUpdater,
+        release,
+        *,
+        asset_name: str | None = None,
+        require_signature: bool = False,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self.updater = updater
+        self.release = release
+        self.asset_name = asset_name
+        self.require_signature = require_signature
+
+    def run(self) -> None:
+        try:
+            asset = self.updater.select_asset(self.release, self.asset_name)
+            if asset is None:
+                raise UpdateError("release has no downloadable asset")
+            self.progress.emit(5, f"Downloading {self.release.version}...")
+
+            def on_chunk(done: int, total: int) -> None:
+                percent = int(done * 70 / total) if total else 0
+                self.progress.emit(5 + percent, f"Downloading... {percent}%")
+
+            path = self.updater.download_release(
+                self.release, asset_name=asset.name, progress=on_chunk
+            )
+            self.progress.emit(80, "Verifying release...")
+            self.updater.verify_release_asset(
+                self.release, path, asset_name=asset.name,
+                require_signature=self.require_signature,
+            )
+            self.progress.emit(90, "Installing update...")
+            result = self.updater.apply_update(path, version=self.release.version)
+            self.progress.emit(100, "Update installed. Restart Workmods to use it.")
+            self.succeeded.emit(result)
+        except Exception as exc:
+            self.failed.emit(str(exc))
 
 
 class PublishWorker(QThread):
@@ -140,4 +207,7 @@ class ProfileWorker(QThread):
             self.failed.emit(str(exc))
 
 
-__all__ = ["InstallWorker", "ProfileWorker", "PublishWorker", "UnpublishWorker"]
+__all__ = [
+    "InstallWorker", "ProfileWorker", "PublishWorker", "UnpublishWorker",
+    "UpdateCheckWorker", "UpdateInstallWorker",
+]

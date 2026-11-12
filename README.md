@@ -4,7 +4,7 @@
 
 **Languages:** English · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [中文](README.zh.md)
 
-**Status:** `v1.1b` — public beta with a redesigned client. [Download the latest beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) or read
+**Status:** `v1.1c` — public beta with a redesigned client. [Download the latest beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c) or read
 [Known limitations](#known-limitations-before-public-launch) before relying on it for a real game.
 
 Workmods is three things that share one format:
@@ -47,14 +47,16 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 │   ├── config.py               # settings, paths, game profiles, credentials
 │   ├── models.py               # Game, Mod, InstalledMod (no Qt, no network)
 │   ├── registry.py             # registry parsing, migration, filtering
-│   ├── storage.py              # ZIP packaging, SHA-256, safe install, scanning
+│   ├── storage.py              # ZIP packaging, SHA-256, safe install, enable/disable
+│   ├── profiles.py             # mod profiles, settings presets, export/import
+│   ├── updater.py              # release checks, signature verification, rollback
 │   ├── github_api.py           # thin GitHub REST client
 │   ├── publisher.py            # zip → repo → release → submission pull request
 │   ├── oauth.py                # GitHub OAuth callback server
 │   ├── net.py                  # Qt network adapter for the registry
 │   ├── i18n.py                 # localization + system language detection
-│   ├── devtools.py             # scaffold / validate / pack (no Qt)
-│   ├── cli.py                  # python -m workmods init|validate|pack
+│   ├── devtools.py             # scaffold / validate / pack / compatibility (no Qt)
+│   ├── cli.py                  # python -m workmods init|validate|pack|profile|update
 │   ├── utils.py                # OS helpers
 │   └── ui/                     # PyQt6 widgets only
 │       ├── main_window.py      ├── catalog_tab.py
@@ -68,9 +70,9 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 │   ├── tests/                  # C# smoke suite with Unity stubs
 │   └── README.md
 ├── data/                       # icons + localization (en, ru, de, es, fr, zh)
-├── docs/                       # architecture, schema, guides
+├── docs/                       # architecture, schema, publishing and signing guides
 ├── submissions/                # one JSON file per mod (source of truth)
-├── tests/                      # pytest suite (81 tests)
+├── tests/                      # pytest suite (84 tests)
 ├── registry.json               # generated shared catalog
 └── .github/
     ├── scripts/update_registry.py
@@ -87,7 +89,7 @@ Why the split: only `workmods/ui/` imports Qt, and only `github_api`/`storage` t
 
 ## Download
 
-Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b):
+Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c):
 
 | System | Archive |
 |---|---|
@@ -96,6 +98,16 @@ Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-O
 | macOS | `Workmods-macos.zip` |
 
 Unpack the archive and run `Workmods.exe`, `Workmods` or `Workmods.app`. The builds are self-contained: Python and PyQt6 are included. The macOS build is unsigned, so use **Right click → Open** on first launch; Windows SmartScreen may show a similar warning.
+
+### What's new in 1.1c
+
+- **Settings → Application Updates** checks the latest GitHub release, verifies
+  `SHA256SUMS` and an optional RSA/ECDSA signature, installs atomically and keeps
+  a backup you can roll back from the same card.
+- **Installed → Mod Profile** saves enabled/disabled sets and settings presets,
+  applies them by moving mods to `.workmods-disabled`, and exports/imports JSON.
+- Release assets now include `SHA256SUMS` and, when the signing secret is set,
+  `SHA256SUMS.sig`. See [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
 
 ---
 
@@ -115,7 +127,7 @@ python main.py
 3. **Install**. The client downloads the release ZIP, verifies its SHA-256 against the registry and extracts it to `<install folder>/<modId>/`.
 4. Point the game at that folder (the Unity SDK does this by default: `Application.persistentDataPath/Workmods`).
 
-Installed mods are listed per game; **Delete** removes the folder, nothing else. To update, install again — the old folder is replaced atomically.
+Installed mods are listed per game; **Delete** removes the folder, nothing else. To update, install again — the old folder is replaced atomically. **Disable** moves a mod to the hidden `.workmods-disabled` folder, so the SDK no longer sees it; **Enable** moves it back. **Save/Apply** a mod profile to switch a whole enabled/disabled set at once. The current profile, settings presets and export/import live in the same toolbar.
 
 ---
 
@@ -250,7 +262,7 @@ Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: 
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 81 tests, no display required
+pytest              # 84 tests, no display required
 ruff check workmods tests
 ```
 
@@ -298,6 +310,11 @@ macOS:
 - `MACOS_NOTARIZATION_TEAM_ID` — Apple Developer Team ID
 - `MACOS_NOTARIZATION_PASSWORD` — app-specific password for notarization
 
+Release checksums:
+- `RELEASE_SIGNING_KEY` — base64-encoded RSA/ECDSA private key PEM. When set, the
+  workflow publishes `SHA256SUMS.sig` next to `SHA256SUMS`; the client verifies
+  it when `WORKMODS_RELEASE_PUBLIC_KEY` points to the matching public key.
+
 Set them in **Settings → Secrets and variables → Actions**. To rebuild an already
 published version with signatures, run the workflow manually with `force` enabled.
 
@@ -310,7 +327,8 @@ These are deliberate v1.0 boundaries, not bugs to discover later:
 1. **Publishing is PR-based and manual.** Anybody can open a submission pull
    request without registry access, but a maintainer still has to review and
    merge it; there is no automated malware scanning or trust score yet.
-2. **No automatic update notifications.** Installing again replaces the folder;
+2. **Mod updates are manual.** The client can update itself from **Settings →
+   Application Updates**, but installed mods still need to be installed again;
    there is no "update available" diff, dependency graph or load order between
    mods.
 3. **Large files:** mod files are uploaded through the GitHub Contents API and

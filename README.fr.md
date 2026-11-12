@@ -4,7 +4,7 @@
 
 **Langues :** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · Français · [中文](README.zh.md)
 
-**Statut :** `v1.1b` — bêta publique avec un client redessiné. [Télécharger la dernière bêta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) ou lire les [limites connues](#limites) avant de l’utiliser dans un vrai jeu.
+**Statut :** `v1.1c` — bêta publique avec un client redessiné. [Télécharger la dernière bêta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c) ou lire les [limites connues](#limites) avant de l’utiliser dans un vrai jeu.
 
 Workmods repose sur trois éléments qui partagent un même format :
 
@@ -33,7 +33,7 @@ Client Workmods ── ZIP + Release ──► dépôt du mod
 
 ## Téléchargement
 
-Les versions compilées sont publiées dans les [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) :
+Les versions compilées sont publiées dans les [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c) :
 
 | Système | Archive |
 |---|---|
@@ -42,6 +42,12 @@ Les versions compilées sont publiées dans les [GitHub Releases](https://github
 | macOS | `Workmods-macos.zip` |
 
 Décompressez l’archive et lancez `Workmods.exe`, `Workmods` ou `Workmods.app`. Python et PyQt6 sont inclus. La version macOS n’est pas signée : au premier lancement, utilisez **Clic droit → Ouvrir**. Windows SmartScreen peut également afficher un avertissement.
+
+### Nouveautés de 1.1c
+
+- **Paramètres → Mises à jour** : vérifie GitHub Releases, contrôle `SHA256SUMS` et la signature éventuelle, installe atomiquement et revient en arrière en cas d’échec.
+- **Installés → Profil de mods** : ensembles activés/désactivés, préréglages, application via `.workmods-disabled`, export et import JSON.
+- Les releases contiennent `SHA256SUMS` et, si le secret de signature est configuré, `SHA256SUMS.sig`. Voir [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
 
 ---
 
@@ -160,7 +166,7 @@ Référence complète des champs et format des soumissions : [docs/REGISTRY_SCHE
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 81 tests, aucun écran requis
+pytest              # 84 tests, aucun écran requis
 ruff check workmods tests
 ```
 

@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import stat
 import sys
+import tarfile
+import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -132,22 +135,33 @@ def verify_sha256(path: str | Path, expected: str) -> bool:
     return _sha256_file(path).lower() == str(expected).strip().lower()
 
 
-def verify_signature(
-    path: str | Path,
+def _signature_bytes(signature: str | Path | bytes) -> bytes:
+    if isinstance(signature, (str, Path)):
+        sig_path = Path(signature)
+        if sig_path.exists():
+            return sig_path.read_bytes()
+        try:
+            return bytes.fromhex(str(signature))
+        except ValueError:
+            return str(signature).encode()
+    return bytes(signature)
+
+
+def verify_signature_data(
+    data: bytes,
     signature: str | Path | bytes,
     *,
-    public_key: str | Path | None = None,
+    public_key: str | Path | bytes | None = None,
     algorithm: str = "sha256",
 ) -> bool:
-    """Verify a detached signature when a public key is available.
+    """Verify a detached signature over ``data`` when a public key is available.
 
     This uses the optional ``cryptography`` package. If it is not installed, or no
     key is provided, verification returns ``False`` instead of pretending to work.
     """
-    path = Path(path)
     try:
         from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
     except Exception:
         return False
 
@@ -155,32 +169,41 @@ def verify_signature(
         return False
 
     try:
-        key_data = Path(public_key).read_bytes() if isinstance(public_key, (str, Path)) and Path(public_key).exists() else str(public_key).encode()
+        if isinstance(public_key, bytes):
+            key_data = public_key
+        elif isinstance(public_key, (str, Path)) and Path(public_key).exists():
+            key_data = Path(public_key).read_bytes()
+        else:
+            key_data = str(public_key).encode()
         key = serialization.load_pem_public_key(key_data)
     except Exception:
         return False
 
-    if isinstance(signature, (str, Path)):
-        sig_path = Path(signature)
-        if sig_path.exists():
-            signature_bytes = sig_path.read_bytes()
-        else:
-            try:
-                signature_bytes = bytes.fromhex(str(signature))
-            except ValueError:
-                signature_bytes = str(signature).encode()
-    else:
-        signature_bytes = bytes(signature)
-
-    data = path.read_bytes()
+    signature_bytes = _signature_bytes(signature)
     hash_algorithm = hashes.SHA256() if algorithm.lower() in {"sha256", "sha-256"} else hashes.SHA256()
     try:
-        if hasattr(key, "verify"):
+        if isinstance(key, rsa.RSAPublicKey):
             key.verify(signature_bytes, data, padding.PKCS1v15(), hash_algorithm)
+            return True
+        if isinstance(key, ec.EllipticCurvePublicKey):
+            key.verify(signature_bytes, data, ec.ECDSA(hash_algorithm))
             return True
     except Exception:
         return False
     return False
+
+
+def verify_signature(
+    path: str | Path,
+    signature: str | Path | bytes,
+    *,
+    public_key: str | Path | bytes | None = None,
+    algorithm: str = "sha256",
+) -> bool:
+    """Verify a detached signature for a file."""
+    return verify_signature_data(
+        Path(path).read_bytes(), signature, public_key=public_key, algorithm=algorithm
+    )
 
 
 class GitHubReleaseClient:
@@ -261,9 +284,9 @@ class ClientUpdater:
         public_key: str | Path | None = None,
     ):
         self.current_version = current_version
+        self.public_key = public_key or os.environ.get("WORKMODS_RELEASE_PUBLIC_KEY", "") or None
         self.repo = repo
         self.token = token
-        self.public_key = public_key
         self.release_client = GitHubReleaseClient(repo=repo, token=token)
         self.executable_path = Path(executable_path or sys.executable).resolve()
         self.state_dir = Path(state_dir or Path.home() / ".devers_workmods")
@@ -279,6 +302,52 @@ class ClientUpdater:
             return release
         return None
 
+    @staticmethod
+    def platform_asset_name() -> str:
+        if sys.platform.startswith("win"):
+            return "Workmods-windows-x86_64.zip"
+        if sys.platform == "darwin":
+            return "Workmods-macos.zip"
+        return "Workmods-linux-x86_64.tar.gz"
+
+    def select_asset(self, release: ReleaseInfo, asset_name: str | None = None) -> ReleaseAsset | None:
+        return release.asset(asset_name or self.platform_asset_name()) or release.asset()
+
+    def _asset_bytes(self, asset: ReleaseAsset | None) -> bytes:
+        if asset is None or not asset.url:
+            return b""
+        try:
+            response = requests.get(asset.url, timeout=60, allow_redirects=True)
+            response.raise_for_status()
+            return response.content
+        except Exception as exc:
+            raise UpdateError(f"cannot fetch {asset.name}: {exc}") from exc
+
+    def checksum_for_asset(
+        self,
+        release: ReleaseInfo,
+        asset_name: str,
+        *,
+        checksums_name: str = "SHA256SUMS",
+    ) -> str:
+        """Return the published SHA-256 for ``asset_name``, or an empty string."""
+        checksums = release.asset(checksums_name) or release.asset("checksums.txt")
+        if checksums is None:
+            return ""
+        text = self._asset_bytes(checksums).decode("utf-8", errors="replace")
+        for line in text.splitlines():
+            parts = line.strip().split()
+            if len(parts) >= 2 and parts[-1].lstrip("*") == asset_name:
+                return parts[0].lower()
+        return ""
+
+    def signature_for_checksums(self, release: ReleaseInfo) -> bytes | None:
+        for name in ("SHA256SUMS.sig", "SHA256SUMS.asc", "checksums.txt.sig"):
+            asset = release.asset(name)
+            if asset is not None:
+                return self._asset_bytes(asset)
+        return None
+
     def download_release(
         self,
         release: ReleaseInfo,
@@ -288,7 +357,7 @@ class ClientUpdater:
         progress: Callable[[int, int], None] | None = None,
         timeout: int = 300,
     ) -> Path:
-        asset = release.asset(asset_name)
+        asset = self.select_asset(release, asset_name)
         if asset is None or not asset.url:
             raise UpdateError("release has no downloadable asset")
         dest = Path(destination) if destination else self.backup_dir / asset.name
@@ -333,6 +402,35 @@ class ClientUpdater:
             # optional verification cannot be performed.
             verify_signature(path, signature, public_key=self.public_key)
 
+    def verify_release_asset(
+        self,
+        release: ReleaseInfo,
+        path: str | Path,
+        *,
+        asset_name: str = "",
+        require_signature: bool = False,
+    ) -> str:
+        """Verify an asset against ``SHA256SUMS`` and an optional signature."""
+        path = Path(path)
+        name = asset_name or path.name
+        checksum = self.checksum_for_asset(release, name)
+        if checksum:
+            self.verify_download(path, expected_sha256=checksum)
+        signature = self.signature_for_checksums(release)
+        checksums = release.asset("SHA256SUMS") or release.asset("checksums.txt")
+        if signature is not None and checksums is not None:
+            checksums_data = self._asset_bytes(checksums)
+            if self.public_key:
+                if not verify_signature_data(
+                    checksums_data, signature, public_key=self.public_key
+                ):
+                    raise UpdateError("release checksum signature verification failed")
+            elif require_signature:
+                raise UpdateError("no public key configured for signature verification")
+        elif require_signature:
+            raise UpdateError("signed checksums are missing from this release")
+        return checksum
+
     # -- apply / rollback ---------------------------------------------------
     def _state(self) -> dict[str, Any]:
         if not self.state_file.exists():
@@ -352,6 +450,36 @@ class ClientUpdater:
         except FileNotFoundError:
             pass
 
+    def _prepare_update_executable(self, update_path: Path) -> Path:
+        """Return the executable inside a release archive, or the file itself."""
+        name = update_path.name.lower()
+        if not name.endswith((".zip", ".tar.gz", ".tgz")):
+            return update_path
+        extract_dir = self.backup_dir / "extracted"
+        if extract_dir.exists():
+            shutil.rmtree(extract_dir, ignore_errors=True)
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        if name.endswith(".zip"):
+            with zipfile.ZipFile(update_path) as archive:
+                for member in archive.infolist():
+                    member_name = member.filename.replace("\\", "/")
+                    if member_name.startswith("/") or ".." in Path(member_name).parts:
+                        raise UpdateError(f"unsafe update archive entry: {member.filename}")
+                archive.extractall(extract_dir)
+        else:
+            with tarfile.open(update_path, "r:gz") as archive:
+                for member in archive.getmembers():
+                    if member.name.startswith("/") or ".." in Path(member.name).parts:
+                        raise UpdateError(f"unsafe update archive entry: {member.name}")
+                archive.extractall(extract_dir, filter="data")
+        candidates = [
+            path for path in extract_dir.rglob("*")
+            if path.is_file() and path.name in {"Workmods", "Workmods.exe"}
+        ]
+        if not candidates:
+            raise UpdateError("update archive does not contain a Workmods executable")
+        return candidates[0]
+
     def apply_update(
         self,
         update_path: str | Path,
@@ -361,7 +489,7 @@ class ClientUpdater:
         backup: bool = True,
         rollback_on_failure: bool = True,
     ) -> UpdateResult:
-        update_path = Path(update_path)
+        update_path = self._prepare_update_executable(Path(update_path))
         target = Path(target or self.executable_path)
         backup_path = self.backup_dir / f"{target.name}.previous" if backup else None
         result = UpdateResult(source=update_path, target=target, backup=backup_path, version=version, applied=False)
@@ -459,4 +587,5 @@ __all__ = [
     "is_newer",
     "verify_sha256",
     "verify_signature",
+    "verify_signature_data",
 ]

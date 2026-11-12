@@ -4,7 +4,7 @@
 
 **语言：** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · 中文
 
-**状态：** `v1.1b` —— 重新设计客户端的公开测试版。[下载最新测试版](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b)，或先阅读[已知限制](#限制)。
+**状态：** `v1.1c` —— 重新设计客户端的公开测试版。[下载最新测试版](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c)，或先阅读[已知限制](#限制)。
 
 Workmods 由三个共享同一格式的部分组成：
 
@@ -33,7 +33,7 @@ Workmods 客户端 ── ZIP + Release ──► 模组仓库
 
 ## 下载
 
-预编译版本发布在 [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b)：
+预编译版本发布在 [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c)：
 
 | 系统 | 压缩包 |
 |---|---|
@@ -42,6 +42,12 @@ Workmods 客户端 ── ZIP + Release ──► 模组仓库
 | macOS | `Workmods-macos.zip` |
 
 解压后运行 `Workmods.exe`、`Workmods` 或 `Workmods.app`。Python 和 PyQt6 已包含在内。macOS 版本未签名：首次启动请使用**右键 → 打开**。Windows SmartScreen 也可能显示类似提示。
+
+### 1.1c 新功能
+
+- **设置 → 应用更新**：检查 GitHub Release，验证 `SHA256SUMS` 和可选签名，原子安装，失败时回滚。
+- **已安装 → 模组配置**：启用/禁用集合、设置预设、通过 `.workmods-disabled` 应用、JSON 导出和导入。
+- Release 包含 `SHA256SUMS`，配置签名密钥后还会包含 `SHA256SUMS.sig`。详见 [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md)。
 
 ---
 
@@ -160,7 +166,7 @@ SDK 会记录发现的模组、加载的 bundle 和错误，但不会向游戏�
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 81 个测试，无需显示器
+pytest              # 84 个测试，无需显示器
 ruff check workmods tests
 ```
 

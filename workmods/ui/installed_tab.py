@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QListWidget,
     QListWidgetItem,
@@ -19,12 +22,21 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from workmods.config import WorkmodsConfig
+from workmods.config import CONFIG_DIR, WorkmodsConfig
 from workmods.i18n import Localization
 from workmods.models import InstalledMod
 from workmods.net import RegistryStore
+from workmods.profiles import ModProfileStore, ProfileError
 from workmods.registry import ALL_GAMES
-from workmods.storage import scan_installed_mods, uninstall_mod
+from workmods.storage import (
+    apply_mod_state,
+    disable_mod,
+    disabled_root,
+    enable_mod,
+    scan_disabled_mods,
+    scan_installed_mods,
+    uninstall_mod,
+)
 from workmods.ui.common import populate_game_filter, selected_game_id
 from workmods.ui.theme import load_icon
 from workmods.ui.widgets import CoverLabel, ModRow, initial_pixmap
@@ -46,6 +58,12 @@ class InstalledTab(QWidget):
         self.loc = loc
         self.store = store
         self._rows: dict[str, tuple[InstalledMod, Path]] = {}
+        self._profile_store = ModProfileStore(CONFIG_DIR / "profiles.json")
+        try:
+            if self._profile_store.path and self._profile_store.path.exists():
+                self._profile_store.load()
+        except ProfileError:
+            self._profile_store = ModProfileStore(CONFIG_DIR / "profiles.json")
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -70,6 +88,42 @@ class InstalledTab(QWidget):
         top.addWidget(self.game_filter)
         top.addWidget(btn_refresh)
         layout.addLayout(top)
+
+        profile_row = QHBoxLayout()
+        profile_row.setSpacing(8)
+        profile_label = QLabel(self.loc.t("mod_profile", "MOD PROFILE"))
+        profile_label.setObjectName("sectionTitle")
+        self.profile_combo = QComboBox()
+        self.profile_combo.setMinimumWidth(190)
+        self.btn_profile_save = QPushButton(
+            load_icon("edit"), self.loc.t("save_profile", "SAVE")
+        )
+        self.btn_profile_save.clicked.connect(self._save_profile)
+        self.btn_profile_apply = QPushButton(
+            load_icon("refresh"), self.loc.t("apply_profile", "APPLY")
+        )
+        self.btn_profile_apply.clicked.connect(self._apply_profile)
+        self.btn_profile_preset = QPushButton(
+            load_icon("settings"), self.loc.t("settings_preset", "PRESET")
+        )
+        self.btn_profile_preset.clicked.connect(self._edit_preset)
+        self.btn_profile_export = QPushButton(
+            load_icon("folder"), self.loc.t("export_profile", "EXPORT")
+        )
+        self.btn_profile_export.clicked.connect(self._export_profile)
+        self.btn_profile_import = QPushButton(
+            load_icon("folder"), self.loc.t("import_profile", "IMPORT")
+        )
+        self.btn_profile_import.clicked.connect(self._import_profile)
+        profile_row.addWidget(profile_label)
+        profile_row.addWidget(self.profile_combo)
+        profile_row.addWidget(self.btn_profile_save)
+        profile_row.addWidget(self.btn_profile_apply)
+        profile_row.addWidget(self.btn_profile_preset)
+        profile_row.addWidget(self.btn_profile_export)
+        profile_row.addWidget(self.btn_profile_import)
+        profile_row.addStretch()
+        layout.addLayout(profile_row)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setHandleWidth(14)
@@ -149,12 +203,17 @@ class InstalledTab(QWidget):
         actions.setSpacing(10)
         self.btn_open = QPushButton(load_icon("folder"), self.loc.t("open_folder", "OPEN FOLDER"))
         self.btn_open.clicked.connect(self._open_folder)
+        self.btn_toggle = QPushButton(
+            load_icon("refresh"), self.loc.t("disable_mod", "DISABLE")
+        )
+        self.btn_toggle.clicked.connect(self._toggle_mod)
         self.btn_delete = QPushButton(
             load_icon("trash"), self.loc.t("delete", "DELETE").upper()
         )
         self.btn_delete.setObjectName("danger")
         self.btn_delete.clicked.connect(self._delete)
         actions.addWidget(self.btn_open)
+        actions.addWidget(self.btn_toggle)
         actions.addWidget(self.btn_delete)
         actions.addStretch()
         detail_layout.addLayout(actions)
@@ -190,8 +249,17 @@ class InstalledTab(QWidget):
                 continue
             for mod in scan_installed_mods(install_root, game.id):
                 rows.append((mod, install_root))
+            for mod in scan_disabled_mods(install_root, game.id):
+                rows.append((mod, disabled_root(install_root)))
 
-        rows.sort(key=lambda row: (self.config.game_name(row[0].game_id), row[0].name.lower()))
+        rows.sort(
+            key=lambda row: (
+                self.config.game_name(row[0].game_id),
+                not row[0].enabled,
+                row[0].name.lower(),
+            )
+        )
+        self._refresh_profiles(game_id)
 
         for mod, install_root in rows:
             game = self.config.game(mod.game_id)
@@ -253,6 +321,7 @@ class InstalledTab(QWidget):
             )
             self.detail_hint.show()
             self.btn_open.setEnabled(False)
+            self.btn_toggle.setEnabled(False)
             self.btn_delete.setEnabled(False)
             return
 
@@ -263,6 +332,10 @@ class InstalledTab(QWidget):
         self.detail_game.setText(game_name.upper())
         self.detail_title.setText(mod.display_name)
         self.detail_meta.setText(f"{mod.version_label}  ·  {mod.author or mod.mod_id}")
+        self.detail_badge.setText(
+            self.loc.t("enabled", "ENABLED") if mod.enabled
+            else self.loc.t("disabled", "DISABLED")
+        )
         self.detail_badge.show()
         self.detail_hint.hide()
         self.package_label.show()
@@ -279,7 +352,184 @@ class InstalledTab(QWidget):
         else:
             self.detail_entry.hide()
         self.btn_open.setEnabled(True)
+        self.btn_toggle.setEnabled(True)
+        self.btn_toggle.setText(
+            self.loc.t("disable_mod", "DISABLE") if mod.enabled
+            else self.loc.t("enable_mod", "ENABLE")
+        )
         self.btn_delete.setEnabled(True)
+
+    def _profile_game_id(self) -> str:
+        game_id = selected_game_id(self.game_filter)
+        return self.config.active_game_id if game_id == ALL_GAMES else game_id
+
+    def _refresh_profiles(self, game_id: str | None = None) -> None:
+        if not hasattr(self, "profile_combo"):
+            return
+        game_id = game_id or selected_game_id(self.game_filter)
+        current = self.profile_combo.currentData()
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.clear()
+        for profile in sorted(
+            self._profile_store.collection.profiles.values(), key=lambda item: item.name.lower()
+        ):
+            if game_id not in (ALL_GAMES, profile.game_id):
+                continue
+            label = profile.name if game_id != ALL_GAMES else f"{profile.name} ({profile.game_id})"
+            self.profile_combo.addItem(label, profile.name)
+        if current:
+            index = self.profile_combo.findData(current)
+            if index >= 0:
+                self.profile_combo.setCurrentIndex(index)
+        self.profile_combo.blockSignals(False)
+
+    def _selected_profile_name(self) -> str:
+        data = self.profile_combo.currentData()
+        return str(data or "")
+
+    def _save_profile(self) -> None:
+        name, accepted = QInputDialog.getText(
+            self,
+            self.loc.t("save_profile", "Save Profile"),
+            self.loc.t("profile_name", "Profile name:"),
+            text=self._selected_profile_name(),
+        )
+        if not accepted or not name.strip():
+            return
+        name = name.strip()
+        game_id = self._profile_game_id()
+        enabled = [
+            mod.mod_id for mod, _root in self._rows.values()
+            if mod.game_id == game_id and mod.enabled
+        ]
+        disabled = [
+            mod.mod_id for mod, _root in self._rows.values()
+            if mod.game_id == game_id and not mod.enabled
+        ]
+        profile = self._profile_store.get(name)
+        if profile is None:
+            self._profile_store.create(name, game_id=game_id, enabled=enabled, disabled=disabled)
+        else:
+            profile.game_id = game_id
+            profile.enabled = enabled
+            profile.disabled = disabled
+        try:
+            self._profile_store.save()
+        except (OSError, ProfileError) as exc:
+            QMessageBox.critical(self, self.loc.t("error", "Error"), str(exc))
+            return
+        self._refresh_profiles(game_id)
+
+    def _apply_profile(self) -> None:
+        name = self._selected_profile_name()
+        profile = self._profile_store.get(name)
+        if profile is None:
+            return
+        answer = QMessageBox.question(
+            self,
+            self.loc.t("apply_profile", "Apply Profile"),
+            self.loc.t(
+                "apply_profile_confirm",
+                "Apply this profile? Enabled and disabled mods will be moved on disk.",
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        install_root = self.config.install_dir_for(profile.game_id)
+        apply_mod_state(
+            install_root, enabled=profile.enabled, disabled=profile.disabled
+        )
+        self.scan()
+        self.mods_changed.emit("")
+
+    def _export_profile(self) -> None:
+        name = self._selected_profile_name()
+        if not name:
+            return
+        path, _selected = QFileDialog.getSaveFileName(
+            self,
+            self.loc.t("export_profile", "Export Profile"),
+            f"{name}.json",
+            "JSON (*.json)",
+        )
+        if not path:
+            return
+        try:
+            self._profile_store.export_profile(name, path)
+        except ProfileError as exc:
+            QMessageBox.critical(self, self.loc.t("error", "Error"), str(exc))
+
+    def _import_profile(self) -> None:
+        path, _selected = QFileDialog.getOpenFileName(
+            self,
+            self.loc.t("import_profile", "Import Profile"),
+            "",
+            "JSON (*.json)",
+        )
+        if not path:
+            return
+        try:
+            profile = self._profile_store.import_profile(path, overwrite=True)
+            self._profile_store.save()
+        except (OSError, ProfileError) as exc:
+            QMessageBox.critical(self, self.loc.t("error", "Error"), str(exc))
+            return
+        self._refresh_profiles(profile.game_id)
+
+    def _edit_preset(self) -> None:
+        name = self._selected_profile_name()
+        profile = self._profile_store.get(name)
+        if profile is None:
+            return
+        preset_name, accepted = QInputDialog.getText(
+            self,
+            self.loc.t("settings_preset", "Settings Preset"),
+            self.loc.t("preset_name", "Preset name:"),
+            text=profile.active_preset,
+        )
+        if not accepted or not preset_name.strip():
+            return
+        text, accepted = QInputDialog.getMultiLineText(
+            self,
+            self.loc.t("settings_preset", "Settings Preset"),
+            self.loc.t("preset_json", "Settings JSON:"),
+            json.dumps(profile.settings, indent=2, ensure_ascii=False),
+        )
+        if not accepted:
+            return
+        try:
+            settings = json.loads(text or "{}")
+        except ValueError as exc:
+            QMessageBox.warning(self, self.loc.t("error", "Error"), str(exc))
+            return
+        if not isinstance(settings, dict):
+            QMessageBox.warning(
+                self, self.loc.t("error", "Error"),
+                self.loc.t("preset_object", "Settings must be a JSON object."),
+            )
+            return
+        try:
+            profile.save_preset(preset_name.strip(), settings)
+            self._profile_store.save()
+        except (OSError, ProfileError) as exc:
+            QMessageBox.critical(self, self.loc.t("error", "Error"), str(exc))
+
+    def _toggle_mod(self) -> None:
+        selected = self._selected()
+        if selected is None:
+            return
+        mod, install_root = selected
+        try:
+            if mod.enabled:
+                disable_mod(install_root, mod.mod_id)
+            else:
+                enable_mod(install_root.parent if install_root.name == ".workmods-disabled" else install_root, mod.mod_id)
+        except Exception as exc:
+            QMessageBox.critical(self, self.loc.t("error", "Error"), str(exc))
+            return
+        self.scan()
+        self.mods_changed.emit(mod.mod_id)
 
     def _delete(self) -> None:
         selected = self._selected()

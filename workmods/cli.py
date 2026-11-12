@@ -226,6 +226,7 @@ def _cmd_update(args: argparse.Namespace) -> int:
         repo=args.repo,
         executable_path=args.target,
         state_dir=CONFIG_DIR,
+        public_key=args.public_key,
     )
     action = args.update_action
     if action == "check":
@@ -364,18 +365,22 @@ def build_parser() -> argparse.ArgumentParser:
     update_parser.add_argument("--current-version", default=APP_VERSION, help="currently installed version")
     update_parser.add_argument("--target", default=None, help="executable to update")
     update_parser.add_argument("--asset", default=None, help="release asset name")
+    update_parser.add_argument("--public-key", default=None, help="RSA/ECDSA public key file for release signature verification")
 
     update_check = update_sub.add_parser("check", help="check for a newer release")
+    update_check.add_argument("--public-key", default=None, help="RSA/ECDSA public key file")
     update_check.set_defaults(func=_cmd_update)
 
     update_apply = update_sub.add_parser("apply", help="apply a downloaded update")
     update_apply.add_argument("package", help="downloaded update file")
     update_apply.add_argument("--target", default=None, help="executable to update")
+    update_apply.add_argument("--public-key", default=None, help="RSA/ECDSA public key file")
     update_apply.add_argument("--version", default="", help="version being applied")
     update_apply.set_defaults(func=_cmd_update)
 
     update_rollback = update_sub.add_parser("rollback", help="restore the previous executable")
     update_rollback.add_argument("--target", default=None, help="executable to restore")
+    update_rollback.add_argument("--public-key", default=None, help="RSA/ECDSA public key file")
     update_rollback.set_defaults(func=_cmd_update)
 
     update_finalize = update_sub.add_parser("finalize", help="finalize a pending update")

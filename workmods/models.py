@@ -155,6 +155,7 @@ class InstalledMod:
     author: str = ""
     description: str = ""
     entry_asset: str = ""
+    enabled: bool = True
     manifest: dict[str, Any] = field(default_factory=dict)
 
     @property

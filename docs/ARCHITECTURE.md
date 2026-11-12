@@ -1,6 +1,6 @@
 # Architecture
 
-Workmods v1.0 is a small platform with three artifacts that share one contract:
+Workmods v1.1 is a small platform with three artifacts that share one contract:
 the **registry entry**. Everything below follows from that contract.
 
 ## Layers
@@ -40,6 +40,11 @@ Rules that keep it maintainable:
   service and renders the result.
 - **`publisher.py` owns the publish sequence**, so the same flow can later be
   driven by a CLI without a display.
+- **`profiles.py` owns enabled/disabled sets and settings presets.** The UI only
+  collects the current state and calls the store; the store has no Qt imports.
+- **`updater.py` owns release checks, verification and replacement.** Downloads,
+  checksum/signature verification, backup creation and rollback are testable
+  without opening a window.
 
 ## Data flow: publishing a mod
 
@@ -90,6 +95,40 @@ CatalogTab ──InstallWorker──► storage.download_file  (any HTTP URL)
 Installs are atomic: an interrupted download or extraction never leaves a
 half-written mod visible to the game. The old folder is only replaced after the
 new one is complete.
+
+## Enabled and disabled mods
+
+A disabled mod is moved from `<install_dir>/<modId>` to
+`<install_dir>/.workmods-disabled/<modId>`. The Unity SDK and the installed-mod
+scanner skip hidden directories, so disabling is immediate and does not edit any
+manifest. `scan_disabled_mods` reads the hidden folder for the client UI, and
+`apply_mod_state` applies a profile’s enabled/disabled lists by moving folders.
+
+Packaging explicitly skips `.workmods-disabled`, so disabled mods never leak into
+a published ZIP.
+
+## Mod profiles
+
+`workmods/profiles.py` stores named `ModProfile` records:
+
+- `enabled` and `disabled` mod ids for one game;
+- the current `settings` object;
+- named `presets` and the active preset;
+- timestamps and a portable JSON representation.
+
+Profiles live in `~/.devers_workmods/profiles.json`. Export writes one profile;
+import validates the JSON and can replace an existing name. The Installed tab
+saves the current disk state, applies a profile, edits a settings preset and
+exports/imports the selected profile.
+
+## Client updates
+
+`ClientUpdater` uses the GitHub Releases API, picks the asset for the running
+platform, downloads it, verifies `SHA256SUMS` and an optional `SHA256SUMS.sig`,
+then extracts the executable from the archive. Before replacement it copies the
+old executable to `~/.devers_workmods/updates/` and records the pending update in
+`update_state.json`; any failure restores the backup. The same state file powers
+the **Rollback Last Update** action in Settings.
 
 ## Game profiles
 
@@ -151,9 +190,12 @@ No UI code touches files or the network directly.
 |---|---|
 | `test_registry.py` | v1 migration, game/search filtering, legacy visibility |
 | `test_config.py` | legacy config migration, per-game dirs, profile lifecycle |
-| `test_storage.py` | packaging filters, zip-slip, wrapper unwrap, atomic install, deletion guards |
+| `test_storage.py` | packaging filters, zip-slip, wrapper unwrap, atomic install, enable/disable, deletion guards |
 | `test_publisher.py` | release + submission PR sequence, fork vs maintainer, default branch URLs, removal PRs |
 | `test_registry_workflow.py` | submission validation (paths, ids, URLs, hashes) and `registry.json` rebuild |
+| `test_profiles.py` | enabled/disabled sets, presets, export/import and overwrite rules |
+| `test_updater.py` | version comparison, SHA-256, RSA signatures, archive extraction, apply/rollback |
+| `test_compatibility.py` | engine, Unity, platform, client and SDK compatibility checks |
 
 The UI was additionally smoke-tested offscreen (window construction, game
 filtering, install from a local HTTP server, draft relocation, dialogs).

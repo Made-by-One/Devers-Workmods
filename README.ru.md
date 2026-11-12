@@ -4,7 +4,7 @@
 
 **Языки:** [English](README.md) · Русский · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [中文](README.zh.md)
 
-**Статус:** `v1.1b` — публичная бета с обновлённым клиентом. [Скачать последнюю бету](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) или прочитать [известные ограничения](#ограничения) перед использованием в реальной игре.
+**Статус:** `v1.1c` — публичная бета с обновлённым клиентом. [Скачать последнюю бету](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c) или прочитать [известные ограничения](#ограничения) перед использованием в реальной игре.
 
 Workmods — это три части одного формата:
 
@@ -33,7 +33,7 @@ Workmods — это три части одного формата:
 
 ## Скачать
 
-Готовые сборки публикуются в [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b):
+Готовые сборки публикуются в [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c):
 
 | Система | Архив |
 |---|---|
@@ -42,6 +42,12 @@ Workmods — это три части одного формата:
 | macOS | `Workmods-macos.zip` |
 
 Распакуйте архив и запустите `Workmods.exe`, `Workmods` или `Workmods.app`. Python и PyQt6 уже включены. Сборка для macOS не подписана: при первом запуске используйте **ПКМ → Открыть**. Windows SmartScreen может показать аналогичное предупреждение.
+
+### Что нового в 1.1c
+
+- **Настройки → Обновления приложения**: проверка GitHub Release, проверка `SHA256SUMS` и подписи, атомарная установка и откат к резервной копии.
+- **Установленные → Профиль модов**: наборы включённых/отключённых модов, пресеты настроек, применение через `.workmods-disabled`, экспорт и импорт JSON.
+- Релизы содержат `SHA256SUMS` и, если настроен секрет подписи, `SHA256SUMS.sig`. Подробнее: [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
 
 ---
 
@@ -160,7 +166,7 @@ SDK логирует найденные моды, загруженные бан�
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 81 тест, дисплей не нужен
+pytest              # 84 теста, дисплей не нужен
 ruff check workmods tests
 ```
 

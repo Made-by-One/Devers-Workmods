@@ -5,6 +5,10 @@ import pytest
 
 from workmods.storage import (
     StorageError,
+    disable_mod,
+    enable_mod,
+    scan_all_mods,
+    scan_disabled_mods,
     install_package,
     package_mod,
     read_mod_meta,
@@ -108,6 +112,24 @@ def test_scan_and_uninstall(tmp_path):
     assert uninstall_mod(root, "one") is True
     assert not (root / "one").exists()
     assert uninstall_mod(root, "one") is False
+
+
+def test_disable_enable_and_scan_disabled_mods(tmp_path):
+    root = tmp_path / "mods"
+    mod = root / "one"
+    mod.mkdir(parents=True)
+    (mod / ".devers_meta.json").write_text(
+        '{"id": "one", "name": "First", "game_id": "game-a"}', encoding="utf-8"
+    )
+
+    assert disable_mod(root, "one")
+    assert not mod.exists()
+    assert scan_disabled_mods(root, "game-a")[0].enabled is False
+    assert scan_all_mods(root, "game-a")[0].enabled is False
+
+    assert enable_mod(root, "one")
+    assert mod.is_dir()
+    assert scan_disabled_mods(root, "game-a") == []
 
 
 def test_uninstall_refuses_outside_paths(tmp_path):

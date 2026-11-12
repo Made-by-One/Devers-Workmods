@@ -14,7 +14,7 @@ import tempfile
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 import requests
 
@@ -22,7 +22,8 @@ from workmods.models import DEFAULT_GAME_ID, InstalledMod, normalize_game_id
 
 MANIFEST_NAME = ".devers_meta.json"
 PUBLIC_MANIFEST_NAME = "workmod.json"
-SKIPPED_DIRS = {".git", "__pycache__", ".idea", ".vscode"}
+DISABLED_DIR = ".workmods-disabled"
+SKIPPED_DIRS = {".git", "__pycache__", ".idea", ".vscode", DISABLED_DIR}
 SKIPPED_FILES = {".DS_Store", "Thumbs.db", MANIFEST_NAME}
 CHUNK_SIZE = 64 * 1024
 
@@ -205,6 +206,51 @@ def install_package(
     return target
 
 
+def _checked_mod_id(mod_id: str) -> str:
+    mod_id = str(mod_id).strip()
+    if not mod_id or mod_id in {".", ".."} or "/" in mod_id or "\\" in mod_id:
+        raise StorageError(f"Invalid mod id: {mod_id!r}")
+    return mod_id
+
+
+def disabled_root(install_root: str | Path) -> Path:
+    return Path(install_root) / DISABLED_DIR
+
+
+def disable_mod(install_root: str | Path, mod_id: str) -> bool:
+    """Move an installed mod into the hidden disabled folder."""
+    mod_id = _checked_mod_id(mod_id)
+    root = Path(install_root)
+    source = root / mod_id
+    target = disabled_root(root) / mod_id
+    if target.is_dir():
+        return False
+    if not source.is_dir():
+        return False
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source.rename(target)
+    return True
+
+
+def enable_mod(install_root: str | Path, mod_id: str) -> bool:
+    """Move a disabled mod back into the active install folder."""
+    mod_id = _checked_mod_id(mod_id)
+    root = Path(install_root)
+    source = disabled_root(root) / mod_id
+    target = root / mod_id
+    if target.is_dir():
+        return False
+    if not source.is_dir():
+        return False
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source.rename(target)
+    return True
+
+
+def is_mod_disabled(install_root: str | Path, mod_id: str) -> bool:
+    return (disabled_root(install_root) / str(mod_id).strip()).is_dir()
+
+
 def uninstall_mod(install_root: str | Path, mod_id: str) -> bool:
     install_root = Path(install_root).resolve()
     target = (install_root / mod_id).resolve()
@@ -214,6 +260,23 @@ def uninstall_mod(install_root: str | Path, mod_id: str) -> bool:
         return False
     shutil.rmtree(target)
     return True
+
+
+def apply_mod_state(
+    install_root: str | Path,
+    *,
+    enabled: Iterable[str] = (),
+    disabled: Iterable[str] = (),
+) -> dict[str, list[str]]:
+    """Apply a profile's enabled/disabled lists by moving mod folders."""
+    moved = {"enabled": [], "disabled": []}
+    for mod_id in disabled:
+        if disable_mod(install_root, mod_id):
+            moved["disabled"].append(str(mod_id))
+    for mod_id in enabled:
+        if enable_mod(install_root, mod_id):
+            moved["enabled"].append(str(mod_id))
+    return moved
 
 
 def is_mod_installed(install_root: str | Path, mod_id: str) -> bool:
@@ -241,15 +304,49 @@ def scan_installed_mods(install_root: str | Path, game_id: str = DEFAULT_GAME_ID
                 author=str(meta.get("author") or ""),
                 description=str(meta.get("description") or ""),
                 entry_asset=str(meta.get("entry_asset") or ""),
+                enabled=True,
                 manifest=meta,
             )
         )
     return mods
 
 
+def scan_disabled_mods(install_root: str | Path, game_id: str = DEFAULT_GAME_ID) -> list[InstalledMod]:
+    """List mods moved to ``.workmods-disabled`` by a profile."""
+    root = disabled_root(install_root)
+    if not root.is_dir():
+        return []
+    game_id = normalize_game_id(game_id)
+    mods: list[InstalledMod] = []
+    for entry in sorted(root.iterdir(), key=lambda p: p.name.lower()):
+        if not entry.is_dir() or entry.name.startswith("."):
+            continue
+        meta = read_mod_meta(entry)
+        mods.append(
+            InstalledMod(
+                mod_id=str(meta.get("id") or entry.name),
+                path=str(entry),
+                game_id=str(meta.get("game_id") or game_id),
+                name=str(meta.get("name") or entry.name),
+                version=str(meta.get("version") or ""),
+                author=str(meta.get("author") or ""),
+                description=str(meta.get("description") or ""),
+                entry_asset=str(meta.get("entry_asset") or ""),
+                enabled=False,
+                manifest=meta,
+            )
+        )
+    return mods
+
+
+def scan_all_mods(install_root: str | Path, game_id: str = DEFAULT_GAME_ID) -> list[InstalledMod]:
+    return scan_installed_mods(install_root, game_id) + scan_disabled_mods(install_root, game_id)
+
+
 __all__ = [
-    "MANIFEST_NAME", "PUBLIC_MANIFEST_NAME", "StorageError", "download_file",
-    "install_package", "is_mod_installed", "now_iso", "package_mod", "read_mod_meta",
-    "safe_extract", "scan_installed_mods", "sha256_file", "uninstall_mod",
-    "write_mod_meta",
+    "DISABLED_DIR", "MANIFEST_NAME", "PUBLIC_MANIFEST_NAME", "StorageError",
+    "apply_mod_state", "disable_mod", "disabled_root", "download_file", "enable_mod",
+    "install_package", "is_mod_disabled", "is_mod_installed", "now_iso", "package_mod",
+    "read_mod_meta", "safe_extract", "scan_all_mods", "scan_disabled_mods",
+    "scan_installed_mods", "sha256_file", "uninstall_mod", "write_mod_meta",
 ]

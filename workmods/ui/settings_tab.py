@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import sys
+import webbrowser
+
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -21,11 +25,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from workmods.config import CONFIG_DIR, WorkmodsConfig, default_mods_dir
+from workmods.config import APP_VERSION, CONFIG_DIR, WorkmodsConfig, default_mods_dir
 from workmods.i18n import Localization, get_language_options, resolve_language
 from workmods.models import DEFAULT_GAME_ID, Game, normalize_game_id
 from workmods.ui.theme import load_icon
 from workmods.ui.widgets import ModRow
+from workmods.ui.workers import UpdateCheckWorker, UpdateInstallWorker
+from workmods.updater import ClientUpdater
 from workmods.utils import open_folder
 
 
@@ -118,6 +124,14 @@ class SettingsTab(QWidget):
         super().__init__(parent)
         self.config = config
         self.loc = loc
+        self._update_worker = None
+        self._update_release = None
+        self._updater = ClientUpdater(
+            current_version=APP_VERSION,
+            executable_path=sys.executable,
+            state_dir=CONFIG_DIR,
+            public_key=os.environ.get("WORKMODS_RELEASE_PUBLIC_KEY") or None,
+        )
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -187,6 +201,45 @@ class SettingsTab(QWidget):
         top_cards.setColumnStretch(1, 2)
         layout.addLayout(top_cards)
 
+        updates_card, updates_box = self._card(
+            self.loc.t("application_updates", "APPLICATION UPDATES")
+        )
+        update_top = QHBoxLayout()
+        update_top.setSpacing(10)
+        self.update_status = QLabel(
+            self.loc.t("current_version", "Current version:") + f" {APP_VERSION}"
+        )
+        self.update_status.setObjectName("meta")
+        self.update_button = QPushButton(
+            load_icon("refresh"), self.loc.t("check_updates", "CHECK FOR UPDATES")
+        )
+        self.update_button.clicked.connect(self._check_updates)
+        self.release_button = QPushButton(
+            self.loc.t("open_download", "OPEN DOWNLOAD PAGE")
+        )
+        self.release_button.clicked.connect(self._open_release_page)
+        self.release_button.hide()
+        self.install_button = QPushButton(
+            self.loc.t("download_install", "DOWNLOAD & INSTALL")
+        )
+        self.install_button.setObjectName("primary")
+        self.install_button.clicked.connect(self._install_update)
+        self.install_button.hide()
+        self.rollback_button = QPushButton(
+            self.loc.t("rollback_update", "ROLLBACK LAST UPDATE")
+        )
+        self.rollback_button.clicked.connect(self._rollback_update)
+        self.rollback_button.hide()
+        update_top.addWidget(self.update_status, 1)
+        update_top.addWidget(self.release_button)
+        update_top.addWidget(self.rollback_button)
+        update_top.addWidget(self.install_button)
+        update_top.addWidget(self.update_button)
+        updates_box.addLayout(update_top)
+        layout.addWidget(updates_card)
+        if self._updater.state_file.exists():
+            self.rollback_button.show()
+
         games_card, games_box = self._card(self.loc.t("games", "GAME PROFILES"))
         self.games_list = QListWidget()
         self.games_list.setMinimumHeight(150)
@@ -251,6 +304,118 @@ class SettingsTab(QWidget):
                     game.display_name,
                     f"{game.id}  ·  {self.config.install_dir_for(game.id)}",
                 ),
+            )
+
+    # -- updates ------------------------------------------------------------
+    def _check_updates(self) -> None:
+        if self._update_worker is not None and self._update_worker.isRunning():
+            return
+        self.update_button.setEnabled(False)
+        self.update_status.setText(self.loc.t("checking_updates", "Checking for updates..."))
+        worker = UpdateCheckWorker(self._updater, self)
+        worker.succeeded.connect(self._on_update_checked)
+        worker.failed.connect(self._on_update_failed)
+        worker.finished.connect(lambda: self.update_button.setEnabled(True))
+        self._update_worker = worker
+        worker.start()
+
+    def _on_update_checked(self, release) -> None:
+        self._update_release = release
+        if release is None:
+            self.update_status.setText(
+                self.loc.t("up_to_date", "You are up to date:") + f" {APP_VERSION}"
+            )
+            self.install_button.hide()
+            self.release_button.hide()
+            return
+        self.update_status.setText(
+            self.loc.t("update_available", "Update available:") + f" {release.version}"
+        )
+        self.release_button.show()
+        if getattr(sys, "frozen", False):
+            self.install_button.show()
+        else:
+            self.install_button.hide()
+
+    def _on_update_failed(self, message: str) -> None:
+        self.update_status.setText(
+            self.loc.t("update_check_failed", "Update check failed.")
+        )
+        QMessageBox.warning(self, self.loc.t("error", "Error"), message)
+
+    def _open_release_page(self) -> None:
+        if self._update_release is not None and self._update_release.html_url:
+            webbrowser.open(self._update_release.html_url)
+
+    def _install_update(self) -> None:
+        if self._update_release is None:
+            return
+        if not getattr(sys, "frozen", False):
+            self._open_release_page()
+            return
+        answer = QMessageBox.question(
+            self,
+            self.loc.t("update_title", "Update"),
+            self.loc.t(
+                "update_confirm",
+                "Download and install this update? Workmods will keep a backup and can roll back if applying it fails.",
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        self.install_button.setEnabled(False)
+        self.update_button.setEnabled(False)
+        worker = UpdateInstallWorker(
+            self._updater,
+            self._update_release,
+            require_signature=bool(self._updater.public_key),
+            parent=self,
+        )
+        worker.progress.connect(lambda _value, text: self.update_status.setText(text))
+        worker.succeeded.connect(self._on_update_installed)
+        worker.failed.connect(self._on_update_install_failed)
+        worker.finished.connect(lambda: self.install_button.setEnabled(True))
+        worker.finished.connect(lambda: self.update_button.setEnabled(True))
+        self._update_worker = worker
+        worker.start()
+
+    def _on_update_installed(self, result) -> None:
+        self.update_status.setText(
+            self.loc.t("update_installed", "Update installed. Restart Workmods to use it.")
+        )
+        self.install_button.hide()
+        self.rollback_button.show()
+        QMessageBox.information(
+            self,
+            self.loc.t("update_title", "Update"),
+            self.loc.t(
+                "update_installed_note",
+                "The new version was installed and the previous executable was backed up. Restart the client to use it.",
+            ),
+        )
+
+    def _on_update_install_failed(self, message: str) -> None:
+        self.update_status.setText(
+            self.loc.t("update_failed", "Update failed; the previous version was kept.")
+        )
+        QMessageBox.warning(self, self.loc.t("error", "Error"), message)
+
+    def _rollback_update(self) -> None:
+        if self._updater.rollback():
+            self.update_status.setText(
+                self.loc.t("rollback_done", "Rolled back. Restart Workmods to use the previous version.")
+            )
+            QMessageBox.information(
+                self,
+                self.loc.t("update_title", "Update"),
+                self.loc.t("rollback_note", "Restart Workmods to run the restored version."),
+            )
+        else:
+            QMessageBox.warning(
+                self,
+                self.loc.t("error", "Error"),
+                self.loc.t("rollback_missing", "No previous version backup is available."),
             )
 
     # -- persistence --------------------------------------------------------
