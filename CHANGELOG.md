@@ -27,6 +27,8 @@ pass plus the authoring tools that were missing from the alpha.
 - **Localized README** in English, Russian, German, Spanish, French and Chinese.
 - **Standalone builds** for Windows x64, Linux x86_64 and macOS through
   `.github/workflows/release.yml`, published as the first `v1.0b` release.
+- **Optional code signing** for Windows and macOS release binaries, including
+  macOS notarization and stapling when the required secrets are configured.
 
 ### Changed
 

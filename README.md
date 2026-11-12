@@ -261,6 +261,27 @@ pyinstaller --noconfirm --clean --onefile --windowed --name Workmods --icon data
 
 Output is written to `dist/` (`Workmods`, `Workmods.exe` or `Workmods.app`).
 
+### Code signing
+
+The release workflow signs the Windows and macOS binaries when the following
+GitHub Actions secrets are configured. If a secret is missing, the corresponding
+step is skipped and the build is published unsigned.
+
+Windows:
+- `WINDOWS_CERTIFICATE_BASE64` — base64-encoded PFX certificate
+- `WINDOWS_CERTIFICATE_PASSWORD` — PFX password
+
+macOS:
+- `MACOS_CERTIFICATE_BASE64` — base64-encoded Developer ID certificate (`.p12`)
+- `MACOS_CERTIFICATE_PASSWORD` — certificate password
+- `MACOS_CERTIFICATE_NAME` — signing identity, for example `Developer ID Application: Your Name (TEAMID)`
+- `MACOS_NOTARIZATION_APPLE_ID` — Apple ID used for notarization
+- `MACOS_NOTARIZATION_TEAM_ID` — Apple Developer Team ID
+- `MACOS_NOTARIZATION_PASSWORD` — app-specific password for notarization
+
+Set them in **Settings → Secrets and variables → Actions**. To rebuild an already
+published version with signatures, run the workflow manually with `force` enabled.
+
 Build the Unity SDK check (optional): compile `unity-sdk/WorkmodsSDK.cs` together with Unity API stubs; it has no Unity-only syntax beyond the documented APIs. It was verified with C# 7.3 in both Mono and `ENABLE_IL2CPP` configurations.
 
 ## Known limitations (before public launch)
