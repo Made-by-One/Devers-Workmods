@@ -4,7 +4,7 @@
 
 **Languages:** English · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [中文](README.zh.md)
 
-**Status:** `v1.1d` — public beta with a redesigned client. [Download the latest beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1d) or read
+**Status:** `v1.2b` — public beta with a redesigned client. [Download the latest beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.2b) or read
 [Known limitations](#known-limitations-before-public-launch) before relying on it for a real game.
 
 Workmods is three things that share one format:
@@ -89,7 +89,7 @@ Why the split: only `workmods/ui/` imports Qt, and only `github_api`/`storage` t
 
 ## Download
 
-Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1d):
+Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.2b):
 
 | System | Archive |
 |---|---|
@@ -99,7 +99,7 @@ Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-O
 
 Unpack the archive and run `Workmods.exe`, `Workmods` or `Workmods.app`. The builds are self-contained: Python and PyQt6 are included. The macOS build is unsigned, so use **Right click → Open** on first launch; Windows SmartScreen may show a similar warning.
 
-### What's new in 1.1d
+### What's new in 1.2b
 
 - **Settings → Application Updates** checks the latest GitHub release, verifies
   `SHA256SUMS` and an optional RSA/ECDSA signature, installs atomically and keeps
@@ -109,6 +109,7 @@ Unpack the archive and run `Workmods.exe`, `Workmods` or `Workmods.app`. The bui
 - Release assets now include `SHA256SUMS` and, when the signing secret is set,
   `SHA256SUMS.sig`. See [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
 - Linux builds use Ubuntu 22.04, so the binary runs on Ubuntu 24.04 and other glibc 2.35+ systems.
+- Mod editor keeps long icon/banner file names from pushing the layout out of bounds and now supports GIF icons and banners, including animated covers in the catalog.
 
 ---
 

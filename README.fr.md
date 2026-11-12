@@ -4,7 +4,7 @@
 
 **Langues :** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · Français · [中文](README.zh.md)
 
-**Statut :** `v1.1d` — bêta publique avec un client redessiné. [Télécharger la dernière bêta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1d) ou lire les [limites connues](#limites) avant de l’utiliser dans un vrai jeu.
+**Statut :** `v1.2b` — bêta publique avec un client redessiné. [Télécharger la dernière bêta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.2b) ou lire les [limites connues](#limites) avant de l’utiliser dans un vrai jeu.
 
 Workmods repose sur trois éléments qui partagent un même format :
 
@@ -33,7 +33,7 @@ Client Workmods ── ZIP + Release ──► dépôt du mod
 
 ## Téléchargement
 
-Les versions compilées sont publiées dans les [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1d) :
+Les versions compilées sont publiées dans les [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.2b) :
 
 | Système | Archive |
 |---|---|
@@ -43,12 +43,13 @@ Les versions compilées sont publiées dans les [GitHub Releases](https://github
 
 Décompressez l’archive et lancez `Workmods.exe`, `Workmods` ou `Workmods.app`. Python et PyQt6 sont inclus. La version macOS n’est pas signée : au premier lancement, utilisez **Clic droit → Ouvrir**. Windows SmartScreen peut également afficher un avertissement.
 
-### Nouveautés de 1.1d
+### Nouveautés de 1.2b
 
 - **Paramètres → Mises à jour** : vérifie GitHub Releases, contrôle `SHA256SUMS` et la signature éventuelle, installe atomiquement et revient en arrière en cas d’échec.
 - **Installés → Profil de mods** : ensembles activés/désactivés, préréglages, application via `.workmods-disabled`, export et import JSON.
 - Les releases contiennent `SHA256SUMS` et, si le secret de signature est configuré, `SHA256SUMS.sig`. Voir [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
 - Les builds Linux utilisent Ubuntu 22.04 et fonctionnent donc sur Ubuntu 24.04 et les systèmes avec glibc 2.35+.
+- L’éditeur de mods empêche les noms de fichiers d’icône/bannière trop longs de déplacer l’interface et prend désormais en charge les icônes et bannières GIF, y compris les couvertures animées du catalogue.
 
 ---
 
