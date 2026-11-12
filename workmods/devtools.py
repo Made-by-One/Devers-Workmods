@@ -8,6 +8,7 @@ already understand.
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import uuid
 import zipfile
@@ -15,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from workmods.config import APP_VERSION
 from workmods.models import DEFAULT_GAME_ID, normalize_game_id
 from workmods.storage import StorageError, package_mod, safe_extract, sha256_file
 
@@ -117,7 +119,7 @@ def scaffold_mod(
     return manifest_path
 
 
-def validate_mod(folder: str | Path) -> ValidationResult:
+def validate_mod(folder: str | Path, *, compatibility: Any = None) -> ValidationResult:
     """Check a mod folder before publishing; warnings are advice, not blockers."""
     folder = Path(folder)
     result = ValidationResult()
@@ -183,6 +185,7 @@ def validate_mod(folder: str | Path) -> ValidationResult:
         result.warnings.append("no banner.png (optional)")
     if not str(manifest.get("entry_asset") or "").strip():
         result.warnings.append("no entry_asset; players must pick the asset themselves")
+    _validate_compatibility(result, manifest, compatibility)
     return result
 
 
@@ -191,6 +194,7 @@ def validate_package(
     *,
     expected_sha256: str | None = None,
     max_size_bytes: int = 100 * 1024 * 1024,
+    compatibility: Any = None,
 ) -> ValidationResult:
     """Validate a packaged mod (directory or ZIP) before it is published or installed."""
     package = Path(package)
@@ -239,7 +243,7 @@ def validate_package(
             except StorageError as exc:
                 result.errors.append(str(exc))
                 return result
-            folder_result = validate_mod(folder)
+            folder_result = validate_mod(folder, compatibility=compatibility)
             result.errors.extend(folder_result.errors)
             result.warnings.extend(folder_result.warnings)
             return result
@@ -248,7 +252,7 @@ def validate_package(
         result.errors.append(f"not a mod folder or ZIP archive: {package}")
         return result
 
-    folder_result = validate_mod(folder)
+    folder_result = validate_mod(folder, compatibility=compatibility)
     result.errors.extend(folder_result.errors)
     result.warnings.extend(folder_result.warnings)
     return result
@@ -269,6 +273,176 @@ def pack_mod(folder: str | Path, output: str | Path | None = None) -> PackResult
         sha256=sha256_file(destination),
         size=destination.stat().st_size,
     )
+
+
+def _as_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [part.strip() for part in value.split(",") if part.strip()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [str(value).strip()] if str(value).strip() else []
+
+
+def _version_key(value: Any) -> tuple[int, ...]:
+    text = str(value or "").strip().lower().lstrip("v")
+    numbers = [int(part) for part in re.findall(r"\d+", text)]
+    return tuple(numbers) if numbers else (0,)
+
+
+def _compatibility_target(compatibility: Any) -> dict[str, Any]:
+    if compatibility is None:
+        return {}
+    if isinstance(compatibility, dict):
+        return dict(compatibility)
+    if isinstance(compatibility, str):
+        text = compatibility.strip()
+        if not text:
+            return {}
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+            if isinstance(parsed, list):
+                return {"platforms": parsed}
+        except (json.JSONDecodeError, ValueError):
+            pass
+        result: dict[str, Any] = {}
+        for chunk in text.replace(";", ",").split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            if ":" in chunk:
+                key, value = chunk.split(":", 1)
+                result[key.strip()] = value.strip()
+            else:
+                result.setdefault("platforms", []).append(chunk)
+        return result
+    if isinstance(compatibility, (list, tuple, set)):
+        return {"platforms": list(compatibility)}
+    if hasattr(compatibility, "to_dict"):
+        try:
+            return dict(compatibility.to_dict())
+        except Exception:
+            pass
+    return {"target": str(compatibility)}
+
+
+def _manifest_compatibility(manifest: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    compat = manifest.get("compatibility")
+    if isinstance(compat, dict):
+        result.update(compat)
+    for key in (
+        "engine", "sdk", "unity", "unity_version", "min_unity_version", "max_unity_version",
+        "min_unity", "max_unity", "target_unity_version", "platforms", "supported_platforms",
+        "target_platforms", "client_version", "min_client_version", "requires_client",
+        "sdk_version", "min_sdk_version", "requires_sdk", "min_client", "min_sdk",
+    ):
+        if key in manifest and manifest.get(key) is not None:
+            result.setdefault(key, manifest.get(key))
+    return result
+
+
+def _validate_compatibility(
+    result: ValidationResult, manifest: dict[str, Any], compatibility: Any
+) -> None:
+    target = _compatibility_target(compatibility)
+    if not target:
+        return
+    manifest_compat = _manifest_compatibility(manifest)
+
+    target_engine = (
+        target.get("engine") or target.get("sdk") or target.get("target_engine")
+        or target.get("target_sdk")
+    )
+    manifest_engine = (
+        manifest_compat.get("engine") or manifest_compat.get("sdk")
+        or manifest_compat.get("target_engine")
+    )
+    if target_engine:
+        if manifest_engine:
+            if str(target_engine).strip().lower() != str(manifest_engine).strip().lower():
+                result.errors.append(
+                    f"incompatible engine: manifest targets {manifest_engine}, requested {target_engine}"
+                )
+        else:
+            result.warnings.append("manifest does not declare an engine/sdk; compatibility cannot be verified")
+
+    target_unity = (
+        target.get("unity_version") or target.get("unity") or target.get("target_unity_version")
+        or target.get("target_unity")
+    )
+    manifest_min_unity = (
+        manifest_compat.get("min_unity_version") or manifest_compat.get("min_unity")
+        or manifest_compat.get("minimum_unity_version")
+    )
+    manifest_max_unity = (
+        manifest_compat.get("max_unity_version") or manifest_compat.get("max_unity")
+        or manifest_compat.get("maximum_unity_version")
+    )
+    manifest_unity = (
+        manifest_compat.get("unity_version") or manifest_compat.get("unity")
+        or manifest_compat.get("target_unity_version")
+    )
+    if target_unity:
+        if manifest_min_unity and _version_key(target_unity) < _version_key(manifest_min_unity):
+            result.errors.append(
+                f"incompatible Unity version: requires at least {manifest_min_unity}, got {target_unity}"
+            )
+        if manifest_max_unity and _version_key(target_unity) > _version_key(manifest_max_unity):
+            result.errors.append(
+                f"incompatible Unity version: supports up to {manifest_max_unity}, got {target_unity}"
+            )
+        if manifest_unity:
+            if _version_key(manifest_unity)[:2] != _version_key(target_unity)[:2]:
+                result.errors.append(
+                    f"incompatible Unity version: manifest targets {manifest_unity}, requested {target_unity}"
+                )
+        if not (manifest_min_unity or manifest_max_unity or manifest_unity):
+            result.warnings.append("manifest does not declare a Unity version; compatibility cannot be verified")
+
+    target_platforms = _as_list(
+        target.get("platforms") or target.get("platform") or target.get("target_platforms")
+        or target.get("target_platform")
+    )
+    manifest_platforms = _as_list(
+        manifest_compat.get("platforms") or manifest_compat.get("supported_platforms")
+        or manifest_compat.get("target_platforms")
+    )
+    if target_platforms:
+        if manifest_platforms:
+            if not (set(p.lower() for p in manifest_platforms) & set(p.lower() for p in target_platforms)):
+                result.errors.append(
+                    f"incompatible platform: manifest supports {manifest_platforms}, requested {target_platforms}"
+                )
+        else:
+            result.warnings.append("manifest does not declare supported platforms; compatibility cannot be verified")
+
+    min_client = (
+        manifest_compat.get("min_client_version") or manifest_compat.get("requires_client")
+        or manifest_compat.get("min_client")
+    )
+    target_client = target.get("client_version") or target.get("target_client_version") or APP_VERSION
+    if min_client:
+        if _version_key(target_client) < _version_key(min_client):
+            result.errors.append(
+                f"incompatible client version: requires at least {min_client}, got {target_client}"
+            )
+
+    min_sdk = (
+        manifest_compat.get("min_sdk_version") or manifest_compat.get("requires_sdk")
+        or manifest_compat.get("min_sdk")
+    )
+    target_sdk = target.get("sdk_version") or target.get("target_sdk_version") or target.get("unity_sdk_version")
+    if min_sdk:
+        if target_sdk and _version_key(target_sdk) < _version_key(min_sdk):
+            result.errors.append(
+                f"incompatible SDK version: requires at least {min_sdk}, got {target_sdk}"
+            )
+        elif not target_sdk:
+            result.warnings.append("target SDK version was not provided; SDK compatibility cannot be verified")
 
 
 __all__ = [

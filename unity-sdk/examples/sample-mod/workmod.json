@@ -9,6 +9,13 @@
   "bundles": [
     "sample.bundle"
   ],
+  "engine": "unity",
+  "unity_version": "2021.3",
+  "platforms": [
+    "windows",
+    "macos",
+    "linux"
+  ],
   "tags": [
     "example",
     "sdk"
