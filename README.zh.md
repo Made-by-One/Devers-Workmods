@@ -4,7 +4,7 @@
 
 **语言：** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · 中文
 
-**状态：** `v1.0b` —— 重新设计客户端的公开测试版。[下载首个测试版](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.0b)，或先阅读[已知限制](#限制)。
+**状态：** `v1.1b` —— 重新设计客户端的公开测试版。[下载最新测试版](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b)，或先阅读[已知限制](#限制)。
 
 Workmods 由三个共享同一格式的部分组成：
 
@@ -33,7 +33,7 @@ Workmods 客户端 ── ZIP + Release ──► 模组仓库
 
 ## 下载
 
-预编译版本发布在 [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.0b)：
+预编译版本发布在 [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b)：
 
 | 系统 | 压缩包 |
 |---|---|
@@ -160,7 +160,7 @@ SDK 会记录发现的模组、加载的 bundle 和错误，但不会向游戏�
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 66 个测试，无需显示器
+pytest              # 81 个测试，无需显示器
 ruff check workmods tests
 ```
 

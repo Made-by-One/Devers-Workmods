@@ -4,7 +4,7 @@
 
 **Langues :** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · Français · [中文](README.zh.md)
 
-**Statut :** `v1.0b` — bêta publique avec un client redessiné. [Télécharger la première bêta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.0b) ou lire les [limites connues](#limites) avant de l’utiliser dans un vrai jeu.
+**Statut :** `v1.1b` — bêta publique avec un client redessiné. [Télécharger la dernière bêta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) ou lire les [limites connues](#limites) avant de l’utiliser dans un vrai jeu.
 
 Workmods repose sur trois éléments qui partagent un même format :
 
@@ -33,7 +33,7 @@ Client Workmods ── ZIP + Release ──► dépôt du mod
 
 ## Téléchargement
 
-Les versions compilées sont publiées dans les [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.0b) :
+Les versions compilées sont publiées dans les [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) :
 
 | Système | Archive |
 |---|---|
@@ -160,7 +160,7 @@ Référence complète des champs et format des soumissions : [docs/REGISTRY_SCHE
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 66 tests, aucun écran requis
+pytest              # 81 tests, aucun écran requis
 ruff check workmods tests
 ```
 

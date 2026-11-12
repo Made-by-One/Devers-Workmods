@@ -193,7 +193,17 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Workmods ${{ needs.prepare.outputs.version }} — public beta
           body: |
-            First public beta of the redesigned Workmods client.
+            Second public beta of Workmods. This release adds mod profiles,
+            client update infrastructure with rollback, and package compatibility
+            checks on top of the 1.0b authoring tools.
+
+            **Highlights**
+            - Mod profiles: enabled/disabled sets, settings presets, JSON export/import.
+            - Client updater: release checks, SHA-256 and optional signature verification,
+              atomic replacement and rollback on failure.
+            - `validate-package` now checks engine, Unity version, platform, client and
+              SDK compatibility declared in `workmod.json`.
+            - Unity SDK example and smoke suite from 1.0b remain included.
 
             **Downloads**
             - Windows x64: `Workmods-windows-x86_64.zip`
@@ -210,7 +220,7 @@ jobs:
 
             See the [README](https://github.com/Made-by-One/Devers-Workmods#readme) and
             [CHANGELOG](https://github.com/Made-by-One/Devers-Workmods/blob/main/CHANGELOG.md)
-            for the full 1.0b notes.
+            for the full 1.1b notes.
           files: release-assets/*
           prerelease: true
           fail_on_unmatched_files: true

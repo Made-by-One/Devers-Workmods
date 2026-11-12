@@ -4,7 +4,7 @@
 
 **Languages:** English · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [中文](README.zh.md)
 
-**Status:** `v1.0b` — public beta with a redesigned client. [Download the first beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.0b) or read
+**Status:** `v1.1b` — public beta with a redesigned client. [Download the latest beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b) or read
 [Known limitations](#known-limitations-before-public-launch) before relying on it for a real game.
 
 Workmods is three things that share one format:
@@ -70,7 +70,7 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 ├── data/                       # icons + localization (en, ru, de, es, fr, zh)
 ├── docs/                       # architecture, schema, guides
 ├── submissions/                # one JSON file per mod (source of truth)
-├── tests/                      # pytest suite (66 tests)
+├── tests/                      # pytest suite (81 tests)
 ├── registry.json               # generated shared catalog
 └── .github/
     ├── scripts/update_registry.py
@@ -87,7 +87,7 @@ Why the split: only `workmods/ui/` imports Qt, and only `github_api`/`storage` t
 
 ## Download
 
-Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.0b):
+Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1b):
 
 | System | Archive |
 |---|---|
@@ -250,11 +250,11 @@ Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: 
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 66 tests, no display required
+pytest              # 81 tests, no display required
 ruff check workmods tests
 ```
 
-The test suite covers registry migration/filtering, config migration and game profiles, ZIP packaging, path-traversal rejection, atomic installs, publish orchestration against a fake GitHub client, the submission validator/registry rebuild bot, and package validation (SHA-256, unsafe archive entries and size limits).
+The test suite covers registry migration/filtering, config migration and game profiles, ZIP packaging, path-traversal rejection, atomic installs, publish orchestration against a fake GitHub client, the submission validator/registry rebuild bot, package validation (SHA-256, unsafe archive entries, size limits and compatibility), mod profile export/import, and updater apply/rollback behavior.
 
 The Unity SDK has its own dependency-free C# smoke suite:
 

@@ -396,9 +396,9 @@ def _validate_compatibility(
                 f"incompatible Unity version: supports up to {manifest_max_unity}, got {target_unity}"
             )
         if manifest_unity:
-            if _version_key(manifest_unity)[:2] != _version_key(target_unity)[:2]:
+            if _version_key(target_unity) < _version_key(manifest_unity):
                 result.errors.append(
-                    f"incompatible Unity version: manifest targets {manifest_unity}, requested {target_unity}"
+                    f"incompatible Unity version: requires at least {manifest_unity}, got {target_unity}"
                 )
         if not (manifest_min_unity or manifest_max_unity or manifest_unity):
             result.warnings.append("manifest does not declare a Unity version; compatibility cannot be verified")

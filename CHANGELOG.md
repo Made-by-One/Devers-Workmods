@@ -3,6 +3,32 @@
 All notable changes to Workmods. The format follows Keep a Changelog and the
 project uses semantic versioning.
 
+## [1.1b] — 2026-11-12
+
+Second public beta. Adds mod profiles, client update infrastructure and package
+compatibility checks on top of the 1.0b authoring tools.
+
+### Added
+
+- **Mod profiles** (`workmods/profiles.py`): named enabled/disabled mod sets,
+  reusable settings presets, JSON export and import, plus `profile` CLI commands.
+- **Client updater** (`workmods/updater.py`): GitHub release checks, SHA-256 and
+  optional detached-signature verification, atomic executable replacement,
+  backup creation and rollback when an update cannot be applied.
+- **Package compatibility validation**: `validate` and `validate-package` accept
+  target engine, Unity version, platform, client and SDK versions and compare
+  them with the manifest's compatibility fields.
+- `update` CLI commands for checking, applying, finalizing and rolling back an
+  update.
+- 15 new tests for profiles, updater verification/rollback and compatibility
+  checks; 81 Python tests total.
+
+### Changed
+
+- Version bumped to `1.1b`; README download links point at the new release.
+- The sample mod declares its Unity engine, version and supported platforms so
+  compatibility checks have concrete metadata to verify.
+
 ## [1.0b] — 2026-11-12
 
 Public beta. The client keeps the 1.0 format and workflow but gets a full design
