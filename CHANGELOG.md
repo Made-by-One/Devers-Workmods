@@ -24,6 +24,9 @@ pass plus the authoring tools that were missing from the alpha.
 - `submissions/README.md`; updated schema, publishing and architecture docs;
   13 new tests.
 - 12 tests for localization and the author CLI; 59 tests total.
+- **Localized README** in English, Russian, German, Spanish, French and Chinese.
+- **Standalone builds** for Windows x64, Linux x86_64 and macOS through
+  `.github/workflows/release.yml`, published as the first `v1.0b` release.
 
 ### Changed
 
@@ -36,6 +39,9 @@ pass plus the authoring tools that were missing from the alpha.
 - Registry CI is split into **Validate Submission** (pull requests, read-only) and
   **Rebuild Mod Registry** (push to `main`, rebuilds `registry.json`).
 - `BOT_SECRET` / `WORKMODS_BOT_SECRET` were removed from the client and the bot.
+- Removed the legacy `devers_workmods.py` launcher, unused icon assets and the
+  personal design-preview site from version control.
+- Fixed a stale reference to the removed `docs/SECURITY.md` in the OAuth module.
 
 ### Fixed
 

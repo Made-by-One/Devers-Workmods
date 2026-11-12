@@ -1,0 +1,149 @@
+name: Build Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: workmods-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      exists: ${{ steps.release.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read application version
+        id: version
+        env:
+          PYTHONPATH: .
+        run: |
+          version="$(python -c "from workmods.config import APP_VERSION; print(APP_VERSION)")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$version"
+
+      - name: Check whether the release already exists
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release v${{ steps.version.outputs.version }} already exists; skipping the build."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.exists == 'false'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: linux-x86_64
+            package: linux
+          - os: windows-latest
+            artifact: windows-x86_64
+            package: windows
+          - os: macos-latest
+            artifact: macos
+            package: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt "pyinstaller>=6.0"
+
+      - name: Install Linux Qt runtime libraries
+        if: matrix.package == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxkbcommon0 libxkbcommon-x11-0 libfontconfig1 libfreetype6 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
+            libxcb-xinerama0 libgl1 libegl1
+
+      - name: Build Linux client
+        if: matrix.package == 'linux'
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed \
+            --name Workmods --add-data "data:data" main.py
+          tar -czf "Workmods-${{ matrix.artifact }}.tar.gz" -C dist Workmods
+
+      - name: Build Windows client
+        if: matrix.package == 'windows'
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed `
+            --name Workmods --icon data/icon/app.ico --add-data "data;data" main.py
+          Compress-Archive -Path dist/Workmods.exe -DestinationPath "Workmods-${{ matrix.artifact }}.zip"
+
+      - name: Build macOS client
+        if: matrix.package == 'macos'
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed \
+            --name Workmods --add-data "data:data" main.py
+          if [ -d dist/Workmods.app ]; then target=dist/Workmods.app; else target=dist/Workmods; fi
+          ditto -c -k --sequesterRsrc --keepParent "$target" "Workmods-${{ matrix.artifact }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: Workmods-*
+          if-no-files-found: error
+
+  release:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.prepare.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Workmods ${{ needs.prepare.outputs.version }} — public beta
+          body: |
+            First public beta of the redesigned Workmods client.
+
+            **Downloads**
+            - Windows x64: `Workmods-windows-x86_64.zip`
+            - Linux x86_64: `Workmods-linux-x86_64.tar.gz`
+            - macOS: `Workmods-macos.zip` (built on the current GitHub macOS runner)
+
+            **Install**
+            1. Download the archive for your system and unpack it.
+            2. Run `Workmods.exe` on Windows, `Workmods` on Linux, or `Workmods.app` on macOS.
+            3. Linux: `chmod +x Workmods` before the first launch.
+
+            The build is self-contained; Python and PyQt6 are included. The Unity SDK
+            remains a single file: [`unity-sdk/WorkmodsSDK.cs`](https://github.com/Made-by-One/Devers-Workmods/blob/main/unity-sdk/WorkmodsSDK.cs).
+
+            See the [README](https://github.com/Made-by-One/Devers-Workmods#readme) and
+            [CHANGELOG](https://github.com/Made-by-One/Devers-Workmods/blob/main/CHANGELOG.md)
+            for the full 1.0b notes.
+          files: release-assets/*
+          prerelease: true
+          fail_on_unmatched_files: true

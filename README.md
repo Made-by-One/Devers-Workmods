@@ -2,7 +2,9 @@
 
 **An independent, game-agnostic mod distribution platform — a Steam Workshop you own.**
 
-**Status:** `v1.0b` — public beta with a redesigned client. Read
+**Languages:** English · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [中文](README.zh.md)
+
+**Status:** `v1.0b` — public beta with a redesigned client. [Download the first beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.0b) or read
 [Known limitations](#known-limitations-before-public-launch) before relying on it for a real game.
 
 Workmods is three things that share one format:
@@ -32,8 +34,6 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 └──────────────────┘
 ```
 
-**Кратко по-русски:** Workmods — независимый аналог Steam Workshop для любых Unity-игр. Клиент на PyQt6 публикует моды в GitHub Releases и предлагает запись в общем реестре через pull request; `registry.json` пересобирает GitHub Action после merge. Игра подключает один C#-файл `WorkmodsSDK.cs`, сканирует папку модов и загружает AssetBundle'ы. У каждого мода есть `game_id`, поэтому один клиент обслуживает несколько игр. Подробности — в [docs/](docs/).
-
 ---
 
 ## Repository layout
@@ -41,7 +41,8 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 ```
 .
 ├── main.py                     # entry point (python main.py)
-├── devers_workmods.py          # legacy launcher kept for old shortcuts
+├── README.md                   # English documentation
+├── README.<lang>.md            # localized documentation (ru, de, es, fr, zh)
 ├── workmods/                   # Python client, layered
 │   ├── config.py               # settings, paths, game profiles, credentials
 │   ├── models.py               # Game, Mod, InstalledMod (no Qt, no network)
@@ -71,14 +72,34 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 ├── registry.json               # generated shared catalog
 └── .github/
     ├── scripts/update_registry.py
-    └── workflows/update_registry.yml
+    └── workflows/
+        ├── tests.yml
+        ├── validate_submission.yml
+        ├── rebuild_registry.yml
+        └── release.yml          # builds Windows/Linux/macOS binaries
 ```
 
 Why the split: only `workmods/ui/` imports Qt, and only `github_api`/`storage` touch the network and disk. That makes the interesting logic testable headlessly and powers the Qt-free `python -m workmods` CLI. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
+## Download
+
+Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.0b):
+
+| System | Archive |
+|---|---|
+| Windows x64 | `Workmods-windows-x86_64.zip` |
+| Linux x86_64 | `Workmods-linux-x86_64.tar.gz` |
+| macOS | `Workmods-macos.zip` |
+
+Unpack the archive and run `Workmods.exe`, `Workmods` or `Workmods.app`. The builds are self-contained: Python and PyQt6 are included. The macOS build is unsigned, so use **Right click → Open** on first launch; Windows SmartScreen may show a similar warning.
+
+---
+
 ## For players
+
+### From source
 
 ```bash
 python -m venv .venv
@@ -222,6 +243,23 @@ ruff check workmods tests
 ```
 
 The test suite covers registry migration/filtering, config migration and game profiles, ZIP packaging, path-traversal rejection, atomic installs, publish orchestration against a fake GitHub client, and the submission validator/registry rebuild bot.
+
+### Standalone builds
+
+The release workflow builds and publishes standalone clients for Windows, Linux
+and macOS from `.github/workflows/release.yml`. To build locally:
+
+```bash
+pip install -r requirements-dev.txt
+
+# Linux / macOS
+pyinstaller --noconfirm --clean --onefile --windowed --name Workmods --add-data "data:data" main.py
+
+# Windows (note the semicolon in --add-data)
+pyinstaller --noconfirm --clean --onefile --windowed --name Workmods --icon data/icon/app.ico --add-data "data;data" main.py
+```
+
+Output is written to `dist/` (`Workmods`, `Workmods.exe` or `Workmods.app`).
 
 Build the Unity SDK check (optional): compile `unity-sdk/WorkmodsSDK.cs` together with Unity API stubs; it has no Unity-only syntax beyond the documented APIs. It was verified with C# 7.3 in both Mono and `ENABLE_IL2CPP` configurations.
 

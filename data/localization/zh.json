@@ -107,7 +107,7 @@
   "update_github": "在 GITHUB 上更新",
   "unpublish": "取消发布",
   "author_placeholder": "你的名字 / GitHub 用户名",
-  "tags_placeholder": "shaders, weapons, ui",
+  "tags_placeholder": "着色器, 武器, UI",
   "entry_asset_placeholder": "Unity SDK 默认资源的可选名称",
   "target_game_tooltip": "目标游戏。选择已配置的档案或输入新的游戏 ID。\n模组将安装到该游戏的安装目录。",
   "mod_id_missing": "缺少模组 ID。",

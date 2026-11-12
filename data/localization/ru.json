@@ -107,7 +107,7 @@
   "update_github": "ОБНОВИТЬ НА GITHUB",
   "unpublish": "СНЯТЬ С ПУБЛИКАЦИИ",
   "author_placeholder": "Ваше имя / ник на GitHub",
-  "tags_placeholder": "shaders, weapons, ui",
+  "tags_placeholder": "шейдеры, оружие, ui",
   "entry_asset_placeholder": "Необязательное имя ассета по умолчанию для Unity SDK",
   "target_game_tooltip": "Целевая игра. Выберите настроенный профиль или введите новый ID.\nМод будет установлен в папку этой игры.",
   "mod_id_missing": "Не указан ID мода.",

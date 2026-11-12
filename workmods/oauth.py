@@ -1,7 +1,7 @@
 """GitHub OAuth device-less flow: local redirect server on ``localhost``.
 
 The GitHub OAuth app must be configured with the callback
-``http://localhost:8080`` (see docs/SECURITY.md).
+``http://localhost:8080``.
 """
 
 from __future__ import annotations
