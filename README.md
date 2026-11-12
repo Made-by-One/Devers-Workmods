@@ -240,12 +240,6 @@ These are deliberate v1.0 boundaries, not bugs to discover later:
    AssetBundles plus an async loader are required there.
 5. **No mod signing.** SHA-256 gives integrity, not trust.
 
-## Security
-
-- Mods are executable content: the client verifies SHA-256, but games should still treat mods as untrusted.
-- The OAuth client secret is read from the environment when present (`WORKMODS_GITHUB_CLIENT_SECRET`); nothing else is shared between publishers and the registry. See [docs/SECURITY.md](docs/SECURITY.md) — **rotate the built-in default before shipping publicly**.
-- GitHub tokens are stored in `~/.devers_workmods/config.json` (user-only permissions, plain text). Do not share the file.
-
 ## License
 
 MIT — see [LICENSE](LICENSE).

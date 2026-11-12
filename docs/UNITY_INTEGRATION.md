@@ -236,18 +236,7 @@ never throws into gameplay code.
 | IL2CPP | AssetBundles work; DLL loading does not (logged as an error). |
 | **WebGL** | **Not supported by this SDK.** WebGL has no synchronous file access and requires `UnityWebRequestAssetBundle`. Use AssetBundles and write an async loader if you target WebGL. |
 
-## 9. Security
-
-Mods are executable content. Workmods verifies SHA-256 on install, but that only
-proves the file matches the registry, not that it is safe. Recommendations:
-
-- Prefer AssetBundles (data) over DLLs (code).
-- Show players what they install and where it came from (`repo`, `author`).
-- Never grant mods network or file access beyond what your game already has.
-- Validate loaded objects (expected types, value ranges) as you would with any
-  user content.
-
-## 10. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|

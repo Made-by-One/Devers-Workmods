@@ -20,8 +20,8 @@ project uses semantic versioning.
 - Submission validator: path/id/game consistency, SHA-256 format, GitHub release
   URLs, tags, unknown-field rejection and duplicate-id detection.
 - Removal through a pull request that deletes the submission file.
-- `submissions/README.md`; updated schema, publishing, security and architecture
-  docs; 13 new tests (47 total).
+- `submissions/README.md`; updated schema, publishing and architecture docs;
+  13 new tests (47 total).
 
 ### Fixed
 
@@ -56,7 +56,7 @@ limitations in the README are the accepted boundaries for this alpha.
 - **Tests**: 34 pytest cases covering registry, config migration, storage safety,
   publishing and the registry bot; CI workflow.
 - **Documentation**: README, architecture, registry schema, publishing guide,
-  Unity integration guide, security notes.
+  Unity integration guide.
 
 ### Changed
 
@@ -79,7 +79,7 @@ limitations in the README are the accepted boundaries for this alpha.
 
 ### Known limitations
 
-- Publishing requires write access to the registry repository (see
-  `docs/SECURITY.md`); open publishing needs a proxy or PR flow.
+- Publishing required write access to the registry repository; open publishing
+  needed a proxy or PR flow.
 - No automatic update checks, dependency resolution or mod signing.
 - The Unity SDK does not support WebGL.
