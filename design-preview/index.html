@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workmods — редизайн интерфейса</title>
+<style>
+  :root {
+    --bg: #08080d;
+    --panel: #101018;
+    --panel-2: #0b0b12;
+    --line: #232332;
+    --text: #eceaf6;
+    --muted: #8f8fa6;
+    --accent: #8b5cf6;
+    --accent-soft: rgba(139, 92, 246, .14);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1100px 520px at 78% -8%, rgba(139, 92, 246, .16), transparent 60%),
+      radial-gradient(900px 500px at 0% 30%, rgba(45, 212, 191, .06), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(8, 8, 13, .82);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar { display: flex; align-items: center; gap: 20px; height: 64px; }
+  .brand {
+    font-weight: 800; font-size: 15px; letter-spacing: .32em;
+    color: #f7f5ff; text-decoration: none;
+  }
+  .brand span { color: var(--accent); }
+  .nav { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .nav a {
+    color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; padding: 7px 11px; border-radius: 8px;
+  }
+  .nav a:hover { color: #fff; background: #15151f; }
+
+  .hero { padding: 72px 0 44px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+    color: #c4b5fd; background: var(--accent-soft);
+    border: 1px solid rgba(139, 92, 246, .4); border-radius: 999px; padding: 6px 12px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #a78bfa; }
+  h1 {
+    margin: 20px 0 14px; font-size: clamp(34px, 5.4vw, 58px); line-height: 1.03;
+    letter-spacing: -.03em; font-weight: 800;
+  }
+  h1 em {
+    font-style: normal;
+    background: linear-gradient(100deg, #c4b5fd, #8b5cf6 55%, #2dd4bf);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede { max-width: 720px; color: #b6b6c9; font-size: 17px; margin: 0 0 26px; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 10px; padding: 11px 18px; font-size: 13px; font-weight: 700;
+    text-decoration: none; border: 1px solid var(--line); color: var(--text);
+    background: #15151f;
+  }
+  .btn:hover { border-color: #3b3b52; background: #1c1c29; }
+  .btn.primary {
+    background: linear-gradient(120deg, #7c3aed, #a855f7);
+    border-color: #8b5cf6; color: #fff;
+  }
+  .meta { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 22px; }
+  .meta b { color: #d9d6e8; font-weight: 600; }
+
+  section { padding: 26px 0 10px; }
+  .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+  .section-head h2 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
+  .section-head p { margin: 0; color: var(--muted); font-size: 13px; max-width: 560px; }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 13px 15px; border-bottom: 1px solid var(--line); background: #0d0d15;
+  }
+  .card-head h3 { margin: 0; font-size: 14px; letter-spacing: .02em; }
+  .card-head h3 small { display: block; color: var(--muted); font-weight: 500; font-size: 11px; letter-spacing: .04em; }
+
+  .seg { display: inline-flex; background: #08080e; border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; flex: none; }
+  .seg button {
+    appearance: none; border: 0; background: transparent; color: var(--muted);
+    font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    padding: 6px 11px; border-radius: 7px; cursor: pointer;
+  }
+  .seg button.active { background: #221a35; color: #d8ccff; }
+
+  .shot {
+    display: block; width: 100%; padding: 0; border: 0; margin: 0;
+    background: #0b0b12; cursor: zoom-in; position: relative; line-height: 0;
+  }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot::after {
+    content: "Открыть в полном размере";
+    position: absolute; right: 12px; bottom: 12px;
+    font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    color: #e7e3f5; background: rgba(11, 11, 18, .82);
+    border: 1px solid #35354a; border-radius: 7px; padding: 5px 9px;
+    opacity: 0; transition: opacity .15s ease;
+  }
+  .shot:hover::after, .shot:focus-visible::after { opacity: 1; }
+
+  .wide { grid-column: 1 / -1; }
+  .editor-wrap { max-width: 760px; margin: 0 auto; }
+
+  .notes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 6px; }
+  .note { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .note h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #c9b8ff; }
+  .note p { margin: 0; color: #a9a9bf; font-size: 13px; }
+  .note ul { margin: 0; padding-left: 18px; color: #a9a9bf; font-size: 13px; }
+  .note li + li { margin-top: 4px; }
+
+  .caveat {
+    margin-top: 22px; padding: 16px 18px; border-radius: 12px;
+    background: #0f0d16; border: 1px solid #2c2340; color: #a9a2c0; font-size: 13px;
+  }
+  .caveat b { color: #d8ccff; }
+
+  footer { margin-top: 46px; padding: 26px 0 40px; border-top: 1px solid var(--line); color: #6f6f88; font-size: 12px; }
+  footer .container { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 60; display: none;
+    align-items: center; justify-content: center; padding: 26px;
+    background: rgba(4, 4, 8, .93); backdrop-filter: blur(6px);
+  }
+  .modal.open { display: flex; }
+  .modal figure { margin: 0; max-width: 1400px; width: 100%; text-align: center; }
+  .modal img { max-width: 100%; max-height: 86vh; border-radius: 12px; border: 1px solid #2c2c3c; }
+  .modal figcaption { margin-top: 12px; color: var(--muted); font-size: 12px; letter-spacing: .05em; }
+  .modal-close {
+    position: absolute; top: 18px; right: 20px; width: 38px; height: 38px;
+    border-radius: 10px; border: 1px solid #35354a; background: #12121c; color: #ddd9ec;
+    font-size: 18px; cursor: pointer;
+  }
+  .modal-close:hover { background: #1c1c29; }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .notes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hero { padding-top: 48px; }
+    .nav { display: none; }
+  }
+  @media (max-width: 560px) {
+    .notes { grid-template-columns: 1fr; }
+    .container { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container topbar">
+    <a class="brand" href="#top">WORK<span>MODS</span></a>
+    <nav class="nav">
+      <a href="#compare">До / после</a>
+      <a href="#editor">Редактор</a>
+      <a href="#changes">Что изменилось</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="container hero">
+    <span class="eyebrow"><span class="dot"></span> Дизайн-ревью · alpha 1.0a</span>
+    <h1>Тот же терминал,<br>но <em>собранный</em> интерфейс</h1>
+    <p class="lede">
+      Клиент Workmods на PyQt6 переведён на системную типографику, карточки и аккуратную
+      сетку. Ниже — все четыре вкладки и редактор мода в двух состояниях: как было до
+      правок и как стало. Переключайтесь и открывайте любой экран на весь размер.
+    </p>
+    <div class="actions">
+      <a class="btn primary" href="#compare">Смотреть до / после</a>
+      <a class="btn" href="#changes">Список изменений</a>
+    </div>
+    <div class="meta">
+      <span><b>1280 × 820</b> · offscreen-рендер</span>
+      <span><b>6 модов</b> · 3 профиля игр</span>
+      <span><b>47 тестов</b> · ruff clean</span>
+    </div>
+  </div>
+
+  <section id="compare">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>До и после</h2>
+          <p>Слева — состояние на коммите <code>6081fd5</code>, справа — рабочее дерево с новым дизайном. Одинаковые демо-данные и размер окна.</p>
+        </div>
+      </div>
+
+      <div class="grid">
+        <article class="card" data-screen="catalog">
+          <div class="card-head">
+            <h3>Каталог<small>поиск, фильтр, карточки модов</small></h3>
+            <div class="seg" role="group" aria-label="Версия экрана Каталог">
+              <button type="button" data-state="before">Было</button>
+              <button type="button" data-state="after" class="active">Стало</button>
+            </div>
+          </div>
+          <button class="shot" type="button" aria-label="Открыть скриншот Каталога">
+            <img src="after-catalog.png" alt="Каталог модов — новый дизайн" width="1280" height="820">
+          </button>
+        </article>
+
+        <article class="card" data-screen="installed">
+          <div class="card-head">
+            <h3>Установлено<small>список на диске по профилям</small></h3>
+            <div class="seg" role="group" aria-label="Версия экрана Установлено">
+              <button type="button" data-state="before">Было</button>
+              <button type="button" data-state="after" class="active">Стало</button>
+            </div>
+          </div>
+          <button class="shot" type="button" aria-label="Открыть скриншот Установленного">
+            <img src="after-installed.png" alt="Установленные моды — новый дизайн" width="1280" height="820">
+          </button>
+        </article>
+
+        <article class="card" data-screen="author">
+          <div class="card-head">
+            <h3>Студия автора<small>аккаунт, черновики, публикация</small></h3>
+            <div class="seg" role="group" aria-label="Версия экрана Студия автора">
+              <button type="button" data-state="before">Было</button>
+              <button type="button" data-state="after" class="active">Стало</button>
+            </div>
+          </div>
+          <button class="shot" type="button" aria-label="Открыть скриншот Студии автора">
+            <img src="after-author.png" alt="Студия автора — новый дизайн" width="1280" height="820">
+          </button>
+        </article>
+
+        <article class="card" data-screen="settings">
+          <div class="card-head">
+            <h3>Настройки<small>реестр, язык, профили игр</small></h3>
+            <div class="seg" role="group" aria-label="Версия экрана Настройки">
+              <button type="button" data-state="before">Было</button>
+              <button type="button" data-state="after" class="active">Стало</button>
+            </div>
+          </div>
+          <button class="shot" type="button" aria-label="Открыть скриншот Настроек">
+            <img src="after-settings.png" alt="Настройки — новый дизайн" width="1280" height="820">
+          </button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="editor">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>Редактор мода</h2>
+          <p>Метаданные, обложки и публикация через pull request. Главное действие теперь фиолетовое, удаление — красное.</p>
+        </div>
+      </div>
+      <div class="editor-wrap">
+        <article class="card">
+          <div class="card-head">
+            <h3>Mod Editor<small>620 × 780</small></h3>
+          </div>
+          <button class="shot" type="button" aria-label="Открыть скриншот редактора мода">
+            <img src="editor.png" alt="Редактор мода — новый дизайн" width="620" height="780">
+          </button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="changes">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>Что изменилось</h2>
+          <p>Правки касаются только слоя интерфейса: логика, контракты реестра и публикация не тронуты.</p>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h3>Шапка и тема</h3>
+          <ul>
+            <li>ASCII-логотип заменён вордмарком</li>
+            <li>Системный sans вместо Consolas</li>
+            <li>Чип профиля и версия alpha</li>
+            <li>Приглушённая анимированная сетка</li>
+          </ul>
+        </div>
+        <div class="note">
+          <h3>Каталог</h3>
+          <ul>
+            <li>Строки-карточки с аватарами</li>
+            <li>Бейдж <code>INSTALLED</code></li>
+            <li>Обложка со скруглением и кропом</li>
+            <li>Теги-чипы и компактные кнопки</li>
+          </ul>
+        </div>
+        <div class="note">
+          <h3>Списки и состояния</h3>
+          <ul>
+            <li>Единые панели списков</li>
+            <li>Пустые состояния с подсказкой</li>
+            <li>Бейджи <code>PUBLISHED</code> / <code>LOCAL</code></li>
+            <li>Кнопки собраны в левую группу</li>
+          </ul>
+        </div>
+        <div class="note">
+          <h3>Настройки и редактор</h3>
+          <ul>
+            <li>Карточки <code>REGISTRY</code>, <code>PREFERENCES</code>, <code>GAME PROFILES</code></li>
+            <li>Стрелки у выпадающих списков</li>
+            <li>Публикация стала primary-действием</li>
+            <li>Рамки и отступы превью обложек</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="caveat">
+        <b>Что не проверено:</b> скриншоты сняты offscreen-рендером Qt с демо-данными,
+        поэтому наведения, скролл и выбор строки вживую не прокликивались. Если что-то
+        выглядит не так на вашей системе — дело может быть в шрифтах: здесь используется
+        DejaVu Sans, на Windows подхватится Segoe UI.
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <span>Workmods · локальный сайт-ревью · 12 ноября 2026</span>
+    <span>PyQt6 · скриншоты: design-preview/</span>
+  </div>
+</footer>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Просмотр скриншота">
+  <button class="modal-close" type="button" aria-label="Закрыть">✕</button>
+  <figure>
+    <img id="modal-img" src="" alt="">
+    <figcaption id="modal-caption"></figcaption>
+  </figure>
+</div>
+
+<script>
+  document.querySelectorAll('.card[data-screen]').forEach(function (card) {
+    var screen = card.dataset.screen;
+    var img = card.querySelector('img');
+    card.querySelectorAll('.seg button').forEach(function (button) {
+      button.addEventListener('click', function () {
+        card.querySelectorAll('.seg button').forEach(function (b) { b.classList.remove('active'); });
+        button.classList.add('active');
+        img.src = button.dataset.state + '-' + screen + '.png';
+        img.alt = card.querySelector('h3').firstChild.textContent.trim() +
+          (button.dataset.state === 'before' ? ' — до правок' : ' — после правок');
+      });
+    });
+  });
+
+  var modal = document.getElementById('modal');
+  var modalImg = document.getElementById('modal-img');
+  var modalCaption = document.getElementById('modal-caption');
+
+  document.querySelectorAll('.shot').forEach(function (shot) {
+    shot.addEventListener('click', function () {
+      var img = shot.querySelector('img');
+      modalImg.src = img.src;
+      modalImg.alt = img.alt;
+      modalCaption.textContent = img.alt;
+      modal.classList.add('open');
+    });
+  });
+
+  function closeModal() { modal.classList.remove('open'); }
+  modal.addEventListener('click', function (event) {
+    if (event.target === modal) closeModal();
+  });
+  modal.querySelector('.modal-close').addEventListener('click', closeModal);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeModal();
+  });
+</script>
+</body>
+</html>

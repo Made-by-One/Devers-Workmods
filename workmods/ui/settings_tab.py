@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QFileDialog,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -65,6 +66,8 @@ class GameDialog(QDialog):
         buttons.addWidget(save)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 20, 22, 20)
+        layout.setSpacing(14)
         layout.addLayout(form)
         layout.addLayout(buttons)
 
@@ -102,45 +105,65 @@ class SettingsTab(QWidget):
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 30, 40, 30)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(16)
 
         title = QLabel(self.loc.t("settings", "SETTINGS"))
-        title.setObjectName("sectionTitle")
+        title.setObjectName("panelTitle")
         layout.addWidget(title)
+        subtitle = QLabel("Registry source, language and one install profile per game.")
+        subtitle.setObjectName("meta")
+        layout.addWidget(subtitle)
 
+        registry_card, registry_box = self._card("REGISTRY")
         registry_row = QHBoxLayout()
+        registry_row.setSpacing(10)
         self.registry_input = QLineEdit(self.config.registry_url)
+        self.registry_input.setPlaceholderText("https://example.com/registry.json")
         save_registry = QPushButton("SAVE")
+        save_registry.setObjectName("primary")
         save_registry.clicked.connect(self._save_registry)
-        registry_row.addWidget(QLabel("REGISTRY URL"))
         registry_row.addWidget(self.registry_input, 1)
         registry_row.addWidget(save_registry)
-        layout.addLayout(registry_row)
+        registry_box.addLayout(registry_row)
+        layout.addWidget(registry_card)
+
+        prefs_card, prefs_box = self._card("PREFERENCES")
 
         lang_row = QHBoxLayout()
+        lang_row.setSpacing(12)
+        lang_label = QLabel(self.loc.t("language", "LANGUAGE"))
+        lang_label.setObjectName("meta")
         self.lang_combo = QComboBox()
+        self.lang_combo.setMinimumWidth(180)
         self.lang_combo.addItems(get_available_languages())
         self.lang_combo.setCurrentText(self.config.language)
         self.lang_combo.currentTextChanged.connect(self._save_language)
-        lang_row.addWidget(QLabel(self.loc.t("language", "LANGUAGE")))
+        lang_row.addWidget(lang_label)
         lang_row.addWidget(self.lang_combo)
         lang_row.addStretch()
-        layout.addLayout(lang_row)
+        prefs_box.addLayout(lang_row)
 
         active_row = QHBoxLayout()
+        active_row.setSpacing(12)
+        active_label = QLabel(self.loc.t("active_game", "ACTIVE GAME"))
+        active_label.setObjectName("meta")
         self.active_game_combo = QComboBox()
         self.active_game_combo.setMinimumWidth(240)
         self.active_game_combo.currentIndexChanged.connect(self._save_active_game)
-        active_row.addWidget(QLabel(self.loc.t("active_game", "ACTIVE GAME")))
+        active_row.addWidget(active_label)
         active_row.addWidget(self.active_game_combo)
         active_row.addStretch()
-        layout.addLayout(active_row)
+        prefs_box.addLayout(active_row)
+        layout.addWidget(prefs_card)
 
-        layout.addWidget(QLabel(self.loc.t("games", "GAME PROFILES")))
+        games_card, games_box = self._card(self.loc.t("games", "GAME PROFILES"))
         self.games_list = QListWidget()
-        layout.addWidget(self.games_list, 1)
+        self.games_list.setMinimumHeight(150)
+        games_box.addWidget(self.games_list, 1)
 
         game_buttons = QHBoxLayout()
+        game_buttons.setSpacing(10)
         add_btn = QPushButton(load_icon("edit"), self.loc.t("add_game", "ADD GAME"))
         add_btn.clicked.connect(self._add_game)
         edit_btn = QPushButton(load_icon("edit"), self.loc.t("edit_game", "EDIT GAME"))
@@ -156,9 +179,21 @@ class SettingsTab(QWidget):
         config_btn = QPushButton(load_icon("folder"), "CONFIG FOLDER")
         config_btn.clicked.connect(lambda: open_folder(CONFIG_DIR))
         game_buttons.addWidget(config_btn)
-        layout.addLayout(game_buttons)
+        games_box.addLayout(game_buttons)
+        layout.addWidget(games_card, 1)
 
         self.reload_games()
+
+    def _card(self, title: str) -> tuple[QFrame, QVBoxLayout]:
+        frame = QFrame()
+        frame.setObjectName("card")
+        box = QVBoxLayout(frame)
+        box.setContentsMargins(18, 16, 18, 16)
+        box.setSpacing(12)
+        label = QLabel(title)
+        label.setObjectName("sectionTitle")
+        box.addWidget(label)
+        return frame, box
 
     # -- rendering ----------------------------------------------------------
     def reload_games(self) -> None:

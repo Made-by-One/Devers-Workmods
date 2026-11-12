@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -67,11 +68,15 @@ class ModEditorDialog(QDialog):
     # -- construction -------------------------------------------------------
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
+        outer.setContentsMargins(18, 16, 18, 16)
+        outer.setSpacing(12)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         container = QWidget()
         layout = QVBoxLayout(container)
+        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setSpacing(10)
 
         self.repo_combo = QComboBox()
         self.repo_combo.addItem("Local Only (No Repo)", "")
@@ -108,12 +113,18 @@ class ModEditorDialog(QDialog):
         self.entry_asset_input = QLineEdit(self.mod.entry_asset)
         self.entry_asset_input.setPlaceholderText("Optional default asset name for the Unity SDK")
 
+        preview_style = (
+            "border: 1px solid #262636; border-radius: 10px; "
+            "background: #0c0c14; color: #6f6f88;"
+        )
         self.icon_preview = QLabel("No Icon")
         self.icon_preview.setFixedSize(64, 64)
-        self.icon_preview.setStyleSheet("border: 1px solid #333;")
+        self.icon_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_preview.setStyleSheet(preview_style)
         self.banner_preview = QLabel("No Banner")
         self.banner_preview.setFixedSize(300, 100)
-        self.banner_preview.setStyleSheet("border: 1px solid #333;")
+        self.banner_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.banner_preview.setStyleSheet(preview_style)
 
         self.btn_icon = QPushButton("SELECT ICON")
         self.btn_icon.clicked.connect(lambda: self._pick_image("icon"))
@@ -121,8 +132,12 @@ class ModEditorDialog(QDialog):
         self.btn_banner.clicked.connect(lambda: self._pick_image("banner"))
         self.btn_files = QPushButton("SELECT MOD FILES FOLDER")
         self.btn_files.clicked.connect(self._pick_files_folder)
+        for button in (self.btn_icon, self.btn_banner, self.btn_files):
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         form = QFormLayout()
+        form.setHorizontalSpacing(16)
+        form.setVerticalSpacing(10)
         form.addRow("GitHub Repository:", self.repo_combo)
         form.addRow("Mod ID (Auto):", self.id_input)
         form.addRow("Target Game:", self.game_combo)
@@ -144,14 +159,14 @@ class ModEditorDialog(QDialog):
         outer.addWidget(scroll, 1)
 
         buttons = QHBoxLayout()
+        buttons.setSpacing(10)
         save_btn = QPushButton("SAVE MOD")
-        save_btn.setObjectName("primary")
         save_btn.clicked.connect(self.save_mod)
 
         self.btn_publish = QPushButton(
             "UPDATE ON GITHUB" if self.is_published else "PUBLISH & REQUEST ADDITION"
         )
-        self.btn_publish.setObjectName("danger")
+        self.btn_publish.setObjectName("primary")
         self.btn_publish.clicked.connect(self.publish_mod)
 
         self.btn_unpublish = QPushButton("UNPUBLISH")
@@ -162,6 +177,7 @@ class ModEditorDialog(QDialog):
         buttons.addWidget(save_btn)
         buttons.addWidget(self.btn_publish)
         buttons.addWidget(self.btn_unpublish)
+        buttons.addStretch()
         outer.addLayout(buttons)
 
     def _load_existing(self) -> None:

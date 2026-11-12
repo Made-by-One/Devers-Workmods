@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -28,7 +27,7 @@ from workmods.registry import ALL_GAMES, Registry
 from workmods.storage import is_mod_installed
 from workmods.ui.common import populate_game_filter, selected_game_id
 from workmods.ui.theme import load_icon, scale_pixmap
-from workmods.ui.widgets import ImageDownloader, UploadDialog
+from workmods.ui.widgets import CoverLabel, ImageDownloader, ModRow, UploadDialog
 from workmods.ui.workers import InstallWorker
 from workmods.utils import open_folder
 
@@ -58,10 +57,14 @@ class CatalogTab(QWidget):
     # -- construction -------------------------------------------------------
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 20)
+        layout.setSpacing(14)
 
         top_layout = QHBoxLayout()
+        top_layout.setSpacing(10)
         self.search = QLineEdit()
         self.search.setPlaceholderText(self.loc.t("search", "SEARCH MODS..."))
+        self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self._refresh_list)
 
         self.game_filter = QComboBox()
@@ -82,62 +85,73 @@ class CatalogTab(QWidget):
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.list = QListWidget()
+        self.list.setSpacing(0)
+        self.list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
         self.list.currentItemChanged.connect(self._on_select)
         splitter.addWidget(self.list)
 
         self.detail_frame = QFrame()
         self.detail_frame.setObjectName("detailPanel")
         detail_layout = QVBoxLayout(self.detail_frame)
+        detail_layout.setContentsMargins(20, 20, 20, 20)
+        detail_layout.setSpacing(16)
 
-        self.banner_label = QLabel()
-        self.banner_label.setFixedHeight(140)
-        self.banner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.banner_label.setStyleSheet("background: #0a0a0b; border: 1px solid #333; color: #444;")
-        self.banner_label.setText("NO BANNER")
+        self.banner_label = CoverLabel(radius=12, placeholder="NO COVER")
+        self.banner_label.setFixedHeight(168)
 
         info_layout = QHBoxLayout()
-        self.icon_label = QLabel()
-        self.icon_label.setFixedSize(64, 64)
-        self.icon_label.setStyleSheet("background: #0a0a0b; border: 1px solid #333;")
+        info_layout.setSpacing(16)
+        self.icon_label = CoverLabel(radius=14, placeholder="")
+        self.icon_label.setFixedSize(72, 72)
 
         title_layout = QVBoxLayout()
+        title_layout.setSpacing(4)
         self.title_label = QLabel(self.loc.t("select_mod", "SELECT A MOD"))
-        self.title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;")
+        self.title_label.setObjectName("panelTitle")
         self.author_label = QLabel("")
-        self.author_label.setObjectName("dim")
+        self.author_label.setObjectName("meta")
         title_layout.addWidget(self.title_label)
         title_layout.addWidget(self.author_label)
+        title_layout.addStretch()
 
         info_layout.addWidget(self.icon_label)
-        info_layout.addLayout(title_layout)
-        info_layout.addStretch()
+        info_layout.addLayout(title_layout, 1)
+
+        self.tags_row = QHBoxLayout()
+        self.tags_row.setSpacing(8)
 
         self.desc_label = QTextEdit()
+        self.desc_label.setObjectName("description")
         self.desc_label.setReadOnly(True)
-        self.desc_label.setStyleSheet("background: transparent; border: none; color: #ccc;")
 
         self.btn_install = QPushButton(self.loc.t("install", "INSTALL"))
         self.btn_install.setObjectName("primary")
-        self.btn_install.setFixedHeight(40)
+        self.btn_install.setMinimumHeight(42)
+        self.btn_install.setMinimumWidth(200)
         self.btn_install.setEnabled(False)
         self.btn_install.clicked.connect(self._install)
 
         self.btn_folder = QPushButton(load_icon("folder"), self.loc.t("open_folder", "OPEN FOLDER"))
+        self.btn_folder.setMinimumHeight(42)
         self.btn_folder.clicked.connect(self._open_folder)
         self.btn_folder.setEnabled(False)
         self.btn_folder.hide()
 
         detail_layout.addWidget(self.banner_label)
         detail_layout.addLayout(info_layout)
+        detail_layout.addLayout(self.tags_row)
         detail_layout.addWidget(self.desc_label, 1)
 
         btn_box = QHBoxLayout()
+        btn_box.setSpacing(10)
         btn_box.addWidget(self.btn_install)
         btn_box.addWidget(self.btn_folder)
+        btn_box.addStretch()
         detail_layout.addLayout(btn_box)
 
         splitter.addWidget(self.detail_frame)
-        splitter.setSizes([350, 500])
+        splitter.setSizes([360, 620])
+        splitter.setHandleWidth(14)
         layout.addWidget(splitter, 1)
 
         populate_game_filter(self.game_filter, self.config, None, self.loc.t("all_games", "ALL GAMES"))
@@ -187,12 +201,16 @@ class CatalogTab(QWidget):
         self.list.blockSignals(True)
         self.list.clear()
         for mod in mods:
-            label = f"{mod.name.upper()}  ·  {mod.version_label}"
+            installed = is_mod_installed(self.config.install_dir_for(mod.game_id), mod.id)
+            meta = f"{mod.author or 'Unknown'} · {mod.version_label}"
             if game_id == ALL_GAMES:
-                label += f"  [{mod.game_id}]"
-            item = QListWidgetItem(label)
+                game = self.config.game(mod.game_id)
+                meta += f" · {game.name if game else mod.game_id}"
+            item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, mod)
+            item.setSizeHint(QSize(0, 62))
             self.list.addItem(item)
+            self.list.setItemWidget(item, ModRow(mod.name, meta, badge="Installed" if installed else ""))
             if mod.id == current_id:
                 self.list.setCurrentItem(item)
         self.list.blockSignals(False)
@@ -204,13 +222,28 @@ class CatalogTab(QWidget):
 
     def _show_empty(self) -> None:
         self.title_label.setText(self.loc.t("select_mod", "SELECT A MOD"))
-        self.author_label.setText("")
+        self.author_label.setText("Nothing selected yet — pick a mod from the list to preview it.")
         self.desc_label.clear()
-        self.banner_label.setPixmap(QPixmap())
-        self.banner_label.setText("NO BANNER")
-        self.icon_label.setPixmap(QPixmap())
+        self.banner_label.clear_cover("NO COVER")
+        self.icon_label.clear_cover("")
+        self._clear_layout(self.tags_row)
         self.btn_install.setEnabled(False)
         self.btn_folder.hide()
+
+    @staticmethod
+    def _repolish(widget) -> None:
+        style = widget.style()
+        style.unpolish(widget)
+        style.polish(widget)
+        widget.update()
+
+    @staticmethod
+    def _clear_layout(layout) -> None:
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
 
     # -- selection ----------------------------------------------------------
     def _current_mod(self) -> Mod | None:
@@ -226,25 +259,31 @@ class CatalogTab(QWidget):
         install_root = self.config.install_dir_for(mod.game_id)
         installed = is_mod_installed(install_root, mod.id)
 
+        game = self.config.game(mod.game_id)
         self.title_label.setText(mod.name)
         self.author_label.setText(
-            f"by {mod.author or 'Unknown'} • {mod.version_label} • "
-            f"{self.loc.t('game', 'GAME')}: {self.config.game_name(mod.game_id)}"
+            f"by {mod.author or 'Unknown'}  ·  {mod.version_label}  ·  "
+            f"{game.name if game else mod.game_id}"
         )
         self.desc_label.setPlainText(mod.description or self.loc.t("no_description", "No description."))
+        self._clear_layout(self.tags_row)
+        for tag in mod.tags[:6]:
+            chip = QLabel(tag)
+            chip.setObjectName("chip")
+            self.tags_row.addWidget(chip)
+        self.tags_row.addStretch()
         self.btn_install.setEnabled(mod.is_installable)
         self.btn_install.setText(
             self.loc.t("reinstall", "REINSTALL / UPDATE") if installed else self.loc.t("install", "INSTALL")
         )
         self.btn_install.setObjectName("" if installed else "primary")
-        self.btn_install.setStyleSheet(self.btn_install.styleSheet())
+        self._repolish(self.btn_install)
 
         self.btn_folder.setVisible(installed)
         self.btn_folder.setEnabled(installed)
 
-        self.banner_label.setPixmap(QPixmap())
-        self.banner_label.setText("LOADING..." if mod.banner_url else "NO BANNER")
-        self.icon_label.setPixmap(QPixmap())
+        self.banner_label.clear_cover("LOADING..." if mod.banner_url else "NO COVER")
+        self.icon_label.clear_cover("" if mod.icon_url else "")
 
         if mod.banner_url:
             self._load_image(mod, mod.banner_url, "banner")
@@ -260,9 +299,9 @@ class CatalogTab(QWidget):
             if current is None or current.id != mod.id:
                 return  # selection changed while the image was downloading
             if loaded_tag == "banner":
-                self.banner_label.setPixmap(scale_pixmap(data, 500, 140))
+                self.banner_label.set_cover(scale_pixmap(data, 720, 200))
             else:
-                self.icon_label.setPixmap(scale_pixmap(data, 64, 64))
+                self.icon_label.set_cover(scale_pixmap(data, 72, 72))
 
         def on_done() -> None:
             if worker in self._image_workers:

@@ -7,8 +7,16 @@ import time
 
 import requests
 from PyQt6.QtCore import QRectF, Qt, QThread, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QPainter
-from PyQt6.QtWidgets import QDialog, QLabel, QProgressBar, QVBoxLayout, QWidget
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
+from PyQt6.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class OptimizedFluidBackground(QWidget):
@@ -18,7 +26,7 @@ class OptimizedFluidBackground(QWidget):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
-        self.cell_size = 16
+        self.cell_size = 18
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
         self.timer.start(50)
@@ -55,31 +63,163 @@ class OptimizedFluidBackground(QWidget):
         painter.fillRect(self.rect(), Qt.GlobalColor.black)
         for y in range(self.rows):
             for x in range(self.cols):
-                brightness = int(((self.previous[y][x] + 1) / 2) * 25)
-                if brightness > 5:
+                brightness = int(((self.previous[y][x] + 1) / 2) * 17)
+                if brightness > 6:
                     painter.fillRect(
                         QRectF(x * self.cell_size, y * self.cell_size, self.cell_size - 1, self.cell_size - 1),
                         QColor(brightness, brightness, brightness),
                     )
 
 
-class AsciiLogo(QLabel):
-    def __init__(self):
-        super().__init__()
-        self.setStyleSheet(
-            "color: #FFFFFF; background: transparent; font-family: 'Consolas', monospace; "
-            "font-size: 11px; font-weight: bold; letter-spacing: 1px;"
+class CoverLabel(QLabel):
+    """Image label that paints rounded, cropped covers with a built-in placeholder."""
+
+    def __init__(
+        self,
+        radius: int = 12,
+        placeholder: str = "NO COVER",
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        self.radius = radius
+        self.placeholder = placeholder
+        self._cover = QPixmap()
+
+    def set_cover(self, pixmap: QPixmap) -> None:
+        self._cover = pixmap
+        self.update()
+
+    def clear_cover(self, placeholder: str | None = None) -> None:
+        self._cover = QPixmap()
+        if placeholder is not None:
+            self.placeholder = placeholder
+        self.update()
+
+    def paintEvent(self, event):  # noqa: N802 - Qt API
+        painter = QPainter(self)
+        painter.setRenderHints(
+            QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform
         )
-        self.setText(
-            """
- ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗███╗   ███╗ ██████╗ ██████╗ ███████╗
- ██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝████╗ ████║██╔═══██╗██╔══██╗██╔════╝
- ██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██╔████╔██║██║   ██║██║  ██║███████╗
- ██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██║╚██╔╝██║██║   ██║██║  ██║╚════██║
- ╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██║ ╚═╝ ██║╚██████╔╝██████╔╝███████║
-  ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝
-        """
+        rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        path = QPainterPath()
+        path.addRoundedRect(rect, self.radius, self.radius)
+        painter.setClipPath(path)
+
+        if self._cover.isNull():
+            gradient = QLinearGradient(rect.topLeft(), rect.bottomRight())
+            gradient.setColorAt(0.0, QColor("#16121f"))
+            gradient.setColorAt(1.0, QColor("#0c0c14"))
+            painter.fillRect(rect, gradient)
+            painter.setPen(QColor("#5d5d75"))
+            painter.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.placeholder)
+        else:
+            scaled = self._cover.scaled(
+                self.size(),
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            offset_x = (scaled.width() - self.width()) // 2
+            offset_y = (scaled.height() - self.height()) // 2
+            painter.drawPixmap(-offset_x, -offset_y, scaled)
+
+        painter.setClipping(False)
+        painter.setPen(QPen(QColor("#262636"), 1))
+        painter.drawRoundedRect(rect, self.radius, self.radius)
+        painter.end()
+
+
+class ElidedLabel(QLabel):
+    """Single-line label that clips long text with an ellipsis instead of stretching."""
+
+    def __init__(self, text: str = "", parent: QWidget | None = None):
+        super().__init__(parent)
+        self._full = ""
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.setText(text)
+
+    def setText(self, text: str) -> None:  # noqa: N802 - Qt API
+        self._full = text
+        super().setText(text)
+        self.update()
+
+    def full_text(self) -> str:
+        return self._full
+
+    def paintEvent(self, event):  # noqa: N802 - Qt API
+        painter = QPainter(self)
+        elided = self.fontMetrics().elidedText(
+            self._full, Qt.TextElideMode.ElideRight, self.width()
         )
+        painter.setPen(self.palette().color(self.foregroundRole()))
+        painter.drawText(self.rect(), int(self.alignment()), elided)
+        painter.end()
+
+
+def initial_pixmap(text: str, size: int = 38) -> QPixmap:
+    """Deterministic gradient tile with initials, used where no icon is available."""
+    palettes = [
+        ("#4c1d95", "#8b5cf6"),
+        ("#0f766e", "#2dd4bf"),
+        ("#9d174d", "#f472b6"),
+        ("#9a3412", "#fb923c"),
+        ("#1e3a8a", "#60a5fa"),
+        ("#3f6212", "#a3e635"),
+    ]
+    start, end = palettes[sum(map(ord, text)) % len(palettes)]
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    gradient = QLinearGradient(0, 0, size, size)
+    gradient.setColorAt(0.0, QColor(start))
+    gradient.setColorAt(1.0, QColor(end))
+    painter.setBrush(gradient)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.drawRoundedRect(QRectF(0, 0, size, size), size * 0.28, size * 0.28)
+    initials = "".join(word[0] for word in text.replace("-", " ").split()[:2]).upper() or "?"
+    painter.setPen(QColor("#ffffff"))
+    painter.setFont(QFont("Segoe UI", max(7, int(size * 0.34)), QFont.Weight.Bold))
+    painter.drawText(QRectF(0, 0, size, size), Qt.AlignmentFlag.AlignCenter, initials)
+    painter.end()
+    return pixmap
+
+
+class ModRow(QWidget):
+    """One catalog row: avatar, name, metadata and an installed badge."""
+
+    def __init__(self, name: str, meta: str, badge: str = "", parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(12)
+
+        avatar = QLabel()
+        avatar.setPixmap(initial_pixmap(name, 38))
+        avatar.setFixedSize(38, 38)
+        avatar.setStyleSheet("background: transparent;")
+        layout.addWidget(avatar)
+
+        text = QVBoxLayout()
+        text.setSpacing(3)
+        title = ElidedLabel(name)
+        title.setObjectName("rowTitle")
+        subtitle = ElidedLabel(meta)
+        subtitle.setObjectName("meta")
+        text.addWidget(title)
+        text.addWidget(subtitle)
+        layout.addLayout(text, 1)
+
+        if badge:
+            label = QLabel(badge.upper())
+            label.setObjectName("chipAccent")
+            layout.addWidget(label, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        # Clicks must reach the list view underneath so selection keeps working.
+        for child in self.findChildren(QLabel):
+            child.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
 
 class UploadDialog(QDialog):
@@ -88,11 +228,13 @@ class UploadDialog(QDialog):
     def __init__(self, parent: QWidget | None = None, title: str = "Processing"):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.resize(420, 150)
+        self.resize(420, 160)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowCloseButtonHint)
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 22, 24, 22)
+        layout.setSpacing(14)
         self.status_label = QLabel("Preparing...")
-        self.status_label.setStyleSheet("color: #c9c5c7; font-weight: bold;")
+        self.status_label.setObjectName("rowTitle")
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
@@ -125,4 +267,12 @@ class ImageDownloader(QThread):
             pass
 
 
-__all__ = ["AsciiLogo", "ImageDownloader", "OptimizedFluidBackground", "UploadDialog"]
+__all__ = [
+    "CoverLabel",
+    "ElidedLabel",
+    "ImageDownloader",
+    "ModRow",
+    "OptimizedFluidBackground",
+    "UploadDialog",
+    "initial_pixmap",
+]

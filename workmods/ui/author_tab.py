@@ -5,8 +5,9 @@ from __future__ import annotations
 import webbrowser
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QFrame,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -27,7 +28,7 @@ from workmods.oauth import OAuthServerThread, authorize_url
 from workmods.storage import scan_installed_mods, uninstall_mod
 from workmods.ui.editor_dialog import ModEditorDialog
 from workmods.ui.theme import load_icon, scale_pixmap
-from workmods.ui.widgets import ImageDownloader
+from workmods.ui.widgets import ImageDownloader, ModRow
 from workmods.ui.workers import ProfileWorker
 from workmods.utils import open_folder
 
@@ -62,15 +63,27 @@ class AuthorStudioTab(QWidget):
     # -- construction -------------------------------------------------------
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 20)
+        layout.setSpacing(12)
+
+        account_card = QFrame()
+        account_card.setObjectName("card")
+        account_box = QVBoxLayout(account_card)
+        account_box.setContentsMargins(18, 14, 18, 14)
+        account_box.setSpacing(10)
+        account_title = QLabel("ACCOUNT")
+        account_title.setObjectName("sectionTitle")
+        account_box.addWidget(account_title)
 
         auth_layout = QHBoxLayout()
+        auth_layout.setSpacing(12)
         self.avatar_label = QLabel()
         self.avatar_label.setFixedSize(40, 40)
         self.avatar_label.setStyleSheet("border-radius: 20px; background: #333;")
         self.avatar_label.hide()
 
         self.auth_label = QLabel("Not Logged In")
-        self.auth_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+        self.auth_label.setObjectName("rowTitle")
 
         self.btn_auth = QPushButton(load_icon("web"), "LOGIN VIA GITHUB")
         self.btn_auth.clicked.connect(self._login)
@@ -83,16 +96,27 @@ class AuthorStudioTab(QWidget):
         auth_layout.addStretch()
         auth_layout.addWidget(self.btn_auth)
         auth_layout.addWidget(self.btn_logout)
-        layout.addLayout(auth_layout)
+        account_box.addLayout(auth_layout)
+        layout.addWidget(account_card)
 
         self.section = QLabel("MY MODS")
         self.section.setObjectName("sectionTitle")
         layout.addWidget(self.section)
 
         self.mod_list = QListWidget()
+        self.mod_list.setSpacing(0)
         layout.addWidget(self.mod_list, 1)
 
+        self.empty_label = QLabel(
+            "No local mods yet.\nCreate a mod, publish it as a pull request and it will show up here."
+        )
+        self.empty_label.setObjectName("emptyState")
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.hide()
+        layout.addWidget(self.empty_label, 1)
+
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
         self.btn_new_repo = QPushButton(load_icon("web"), "NEW REPO")
         self.btn_new_repo.setToolTip("Create a new repository on GitHub")
         self.btn_new_repo.clicked.connect(self._create_repo)
@@ -112,11 +136,23 @@ class AuthorStudioTab(QWidget):
         self.btn_delete.setObjectName("danger")
         self.btn_delete.clicked.connect(self._delete_mod)
 
+        self.btn_create.setObjectName("primary")
+        self.btn_folder.setFixedWidth(46)
+        # QSS padding is not part of the style hint, so short labels get clipped.
+        for button in (
+            self.btn_new_repo,
+            self.btn_create,
+            self.btn_edit,
+            self.btn_delete,
+        ):
+            button.setMinimumWidth(button.sizeHint().width() + 18)
+
         btn_layout.addWidget(self.btn_new_repo)
         btn_layout.addWidget(self.btn_create)
         btn_layout.addWidget(self.btn_edit)
         btn_layout.addWidget(self.btn_folder)
         btn_layout.addWidget(self.btn_delete)
+        btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
         self._apply_auth_state()
@@ -240,18 +276,27 @@ class AuthorStudioTab(QWidget):
         self.mod_list.blockSignals(True)
         self.mod_list.clear()
         for mod, install_root in rows:
-            status = "[PUB]" if mod.mod_id in published_ids else "[LOCAL]"
+            published = mod.mod_id in published_ids
             key = f"{mod.game_id}:{mod.mod_id}"
-            item = QListWidgetItem(
-                f"{status} {mod.display_name.upper()}"
-                f"  ·  {mod.version_label}  [{self.config.game_name(mod.game_id)}]"
-            )
+            game = self.config.game(mod.game_id)
+            item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, key)
+            item.setSizeHint(QSize(0, 62))
             self.mod_list.addItem(item)
+            self.mod_list.setItemWidget(
+                item,
+                ModRow(
+                    mod.display_name,
+                    f"{mod.version_label}  ·  {game.name if game else mod.game_id}",
+                    badge="Published" if published else "Local",
+                ),
+            )
             self._rows[key] = (mod, install_root)
             if key == previous:
                 self.mod_list.setCurrentItem(item)
         self.mod_list.blockSignals(False)
+        self.mod_list.setVisible(bool(rows))
+        self.empty_label.setVisible(not rows)
         self.section.setText(f"MY MODS ({len(rows)})")
 
     def _selected_key(self) -> str:
