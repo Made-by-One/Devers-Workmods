@@ -94,6 +94,15 @@ Schreibrechte am Register sind nicht nötig: Der Pull Request kommt aus deinem F
 
 **Aktualisieren:** Version erhöhen und erneut veröffentlichen — der neue Pull Request ersetzt dieselbe Einreichung. **Unpublish** öffnet einen Pull Request zum Löschen; Repository und Releases bleiben online.
 
+Ordner oder fertiges ZIP vor dem Veröffentlichen prüfen:
+
+```bash
+python -m workmods validate my-mod
+python -m workmods validate-package dist/my-mod.zip --sha256 <erwarteter-hash>
+```
+
+Die Paketprüfung lehnt unsichere Archiveinträge, zu große Archive und eine falsche SHA-256 ab.
+
 Ausführliche Anleitung: [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ---
@@ -151,7 +160,7 @@ Vollständige Feldreferenz und Einreichungsformat: [docs/REGISTRY_SCHEMA.md](doc
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 59 Tests, kein Display nötig
+pytest              # 66 Tests, kein Display nötig
 ruff check workmods tests
 ```
 

@@ -64,11 +64,13 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 │       └── theme.py
 ├── unity-sdk/
 │   ├── WorkmodsSDK.cs          # drop-in SDK, single file
+│   ├── examples/               # BasicModLoader + sample mod package
+│   ├── tests/                  # C# smoke suite with Unity stubs
 │   └── README.md
 ├── data/                       # icons + localization (en, ru, de, es, fr, zh)
 ├── docs/                       # architecture, schema, guides
 ├── submissions/                # one JSON file per mod (source of truth)
-├── tests/                      # pytest suite (59 tests)
+├── tests/                      # pytest suite (66 tests)
 ├── registry.json               # generated shared catalog
 └── .github/
     ├── scripts/update_registry.py
@@ -151,6 +153,16 @@ the **Rebuild Mod Registry** Action. Players see the mod after the next catalog
 refresh.
 
 **Updating:** bump the version, publish again — the new pull request replaces the same `modId` submission file, so players see one entry. **Unpublishing** opens a pull request that deletes the submission file; your repository and releases stay online.
+
+Check the folder or the final ZIP from a terminal before publishing:
+
+```bash
+python -m workmods validate my-mod
+python -m workmods validate-package dist/my-mod.zip --sha256 <expected-digest>
+```
+
+The package check rejects unsafe archive entries, oversized archives and SHA-256
+mismatches, and runs the same manifest checks as the desktop editor.
 
 Full walkthrough, troubleshooting and versioning rules: [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
@@ -238,11 +250,18 @@ Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: 
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 59 tests, no display required
+pytest              # 66 tests, no display required
 ruff check workmods tests
 ```
 
-The test suite covers registry migration/filtering, config migration and game profiles, ZIP packaging, path-traversal rejection, atomic installs, publish orchestration against a fake GitHub client, and the submission validator/registry rebuild bot.
+The test suite covers registry migration/filtering, config migration and game profiles, ZIP packaging, path-traversal rejection, atomic installs, publish orchestration against a fake GitHub client, the submission validator/registry rebuild bot, and package validation (SHA-256, unsafe archive entries and size limits).
+
+The Unity SDK has its own dependency-free C# smoke suite:
+
+```bash
+# requires the .NET 8 SDK
+dotnet run --project unity-sdk/tests/WorkmodsSDK.Tests.csproj
+```
 
 ### Standalone builds
 
@@ -282,7 +301,7 @@ macOS:
 Set them in **Settings → Secrets and variables → Actions**. To rebuild an already
 published version with signatures, run the workflow manually with `force` enabled.
 
-Build the Unity SDK check (optional): compile `unity-sdk/WorkmodsSDK.cs` together with Unity API stubs; it has no Unity-only syntax beyond the documented APIs. It was verified with C# 7.3 in both Mono and `ENABLE_IL2CPP` configurations.
+Build the Unity SDK check (optional): compile `unity-sdk/WorkmodsSDK.cs` together with the stubs in `unity-sdk/tests/`; it has no Unity-only syntax beyond the documented APIs. The smoke suite is verified with C# 7.3 on .NET 8. The ready-to-run example is in `unity-sdk/examples/BasicModLoader/`, and `unity-sdk/examples/sample-mod/` is a valid package for local loader tests.
 
 ## Known limitations (before public launch)
 

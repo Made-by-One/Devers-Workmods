@@ -94,6 +94,15 @@ python main.py
 
 **Обновление:** поднимите версию и опубликуйте снова — новый pull request заменит тот же файл заявки. **Unpublish** открывает pull request на удаление заявки; репозиторий и релизы мода остаются доступны.
 
+Проверка папки или финального ZIP перед публикацией:
+
+```bash
+python -m workmods validate my-mod
+python -m workmods validate-package dist/my-mod.zip --sha256 <ожидаемый-хэш>
+```
+
+Проверка пакета отклоняет небезопасные записи архива, слишком большие архивы и несовпадение SHA-256.
+
 Подробный гайд: [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ---
@@ -151,7 +160,7 @@ SDK логирует найденные моды, загруженные бан�
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 59 тестов, дисплей не нужен
+pytest              # 66 тестов, дисплей не нужен
 ruff check workmods tests
 ```
 

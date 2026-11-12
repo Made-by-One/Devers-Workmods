@@ -13,8 +13,16 @@ pass plus the authoring tools that were missing from the alpha.
 - **Six-language interface** (`en`, `ru`, `de`, `es`, `fr`, `zh`) with native
   language names, system-language detection on first launch and instant switching
   without restarting the client.
-- **Mod author CLI**: `python -m workmods init`, `validate` and `pack`; the editor
-  auto-fills metadata from the generated `workmod.json`.
+- **Mod author CLI**: `python -m workmods init`, `validate`, `validate-package`
+  and `pack`; the editor auto-fills metadata from the generated `workmod.json`.
+- **Package validation** for folders and final ZIPs: SHA-256 verification,
+  unsafe-entry rejection, archive size limits and the same manifest checks as
+  the editor.
+- **Unity SDK example** (`unity-sdk/examples/BasicModLoader/`) and a sample mod
+  package for local loader tests.
+- **Unity SDK smoke suite** with minimal Unity stubs and a separate CI job; it
+  covers discovery, filtering, manifest fallback, bundle/DLL detection, rescan
+  and unloading.
 - **Redesigned beta interface**: richer catalog detail with a metadata strip,
   master-detail installed mods with local actions, author account and draft/published
   stats, a two-column settings layout and a sectioned two-column mod editor.
@@ -23,7 +31,8 @@ pass plus the authoring tools that were missing from the alpha.
 - Removal through a pull request that deletes the submission file.
 - `submissions/README.md`; updated schema, publishing and architecture docs;
   13 new tests.
-- 12 tests for localization and the author CLI; 59 tests total.
+- 12 tests for localization and the author CLI; 7 package-validation tests;
+  66 Python tests total, plus the C# SDK suite.
 - **Localized README** in English, Russian, German, Spanish, French and Chinese.
 - **Standalone builds** for Windows x64, Linux x86_64 and macOS through
   `.github/workflows/release.yml`, published as the first `v1.0b` release.

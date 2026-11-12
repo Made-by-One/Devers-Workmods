@@ -21,3 +21,13 @@ jobs:
         run: ruff check --select E9,F workmods tests .github/scripts
       - name: Test
         run: pytest -q
+
+  unity-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Test Unity SDK with stubs
+        run: dotnet run --project unity-sdk/tests/WorkmodsSDK.Tests.csproj --nologo

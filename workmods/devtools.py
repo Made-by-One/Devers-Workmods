@@ -8,13 +8,15 @@ already understand.
 from __future__ import annotations
 
 import json
+import tempfile
 import uuid
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from workmods.models import DEFAULT_GAME_ID, normalize_game_id
-from workmods.storage import StorageError, package_mod, sha256_file
+from workmods.storage import StorageError, package_mod, safe_extract, sha256_file
 
 MANIFEST_NAME = "workmod.json"
 VERSION_MAX_LENGTH = 64
@@ -184,6 +186,74 @@ def validate_mod(folder: str | Path) -> ValidationResult:
     return result
 
 
+def validate_package(
+    package: str | Path,
+    *,
+    expected_sha256: str | None = None,
+    max_size_bytes: int = 100 * 1024 * 1024,
+) -> ValidationResult:
+    """Validate a packaged mod (directory or ZIP) before it is published or installed."""
+    package = Path(package)
+    result = ValidationResult()
+    if not package.exists():
+        result.errors.append(f"package does not exist: {package}")
+        return result
+
+    if package.is_dir():
+        if expected_sha256:
+            result.warnings.append("expected SHA-256 is only checked for ZIP packages")
+        folder = package
+    elif package.is_file() and zipfile.is_zipfile(package):
+        size = package.stat().st_size
+        if size > max_size_bytes:
+            result.errors.append(f"package is larger than {max_size_bytes} bytes")
+            return result
+        if expected_sha256 is not None:
+            actual = sha256_file(package).lower()
+            if actual != str(expected_sha256).strip().lower():
+                result.errors.append(
+                    f"SHA-256 mismatch: expected {expected_sha256}, got {actual}"
+                )
+        try:
+            with zipfile.ZipFile(package) as archive:
+                for member in archive.infolist():
+                    name = member.filename.replace("\\", "/")
+                    if not name or name.endswith("/"):
+                        continue
+                    parts = Path(name).parts
+                    if name.startswith("/") or ".." in parts:
+                        result.errors.append(f"unsafe archive entry: {member.filename}")
+                if result.errors:
+                    return result
+                uncompressed = sum(member.file_size for member in archive.infolist())
+                if uncompressed > max_size_bytes:
+                    result.errors.append("uncompressed package is too large")
+                    return result
+        except (zipfile.BadZipFile, OSError) as exc:
+            result.errors.append(f"invalid ZIP archive: {exc}")
+            return result
+
+        with tempfile.TemporaryDirectory(prefix="workmods_validate_package_") as tmp:
+            try:
+                folder = safe_extract(package, Path(tmp) / "extracted")
+            except StorageError as exc:
+                result.errors.append(str(exc))
+                return result
+            folder_result = validate_mod(folder)
+            result.errors.extend(folder_result.errors)
+            result.warnings.extend(folder_result.warnings)
+            return result
+
+    else:
+        result.errors.append(f"not a mod folder or ZIP archive: {package}")
+        return result
+
+    folder_result = validate_mod(folder)
+    result.errors.extend(folder_result.errors)
+    result.warnings.extend(folder_result.warnings)
+    return result
+
+
 def pack_mod(folder: str | Path, output: str | Path | None = None) -> PackResult:
     """Package a mod folder exactly like the publisher does and hash the ZIP."""
     folder = Path(folder)
@@ -211,5 +281,6 @@ __all__ = [
     "read_manifest",
     "scaffold_mod",
     "validate_mod",
+    "validate_package",
     "version_problem",
 ]

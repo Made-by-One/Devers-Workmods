@@ -13,6 +13,7 @@ from workmods.devtools import (
     pack_mod,
     scaffold_mod,
     validate_mod,
+    validate_package,
 )
 from workmods.models import DEFAULT_GAME_ID
 
@@ -59,6 +60,22 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def _cmd_validate_package(args: argparse.Namespace) -> int:
+    package = Path(args.package)
+    result = validate_package(package, expected_sha256=args.sha256)
+    if args.json:
+        print(json.dumps(result.as_dict(), indent=2, ensure_ascii=False))
+    else:
+        print(f"Validating package {package}")
+        for error in result.errors:
+            print(f"  error: {error}")
+        for warning in result.warnings:
+            print(f"  warning: {warning}")
+        if result.ok:
+            print("OK" + (" with warnings" if result.warnings else ""))
+    return 0 if result.ok else 1
+
+
 def _cmd_pack(args: argparse.Namespace) -> int:
     folder = Path(args.directory)
     try:
@@ -97,6 +114,14 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("directory", help="mod folder to check")
     validate_parser.add_argument("--json", action="store_true", help="machine readable output")
     validate_parser.set_defaults(func=_cmd_validate)
+
+    package_parser = subparsers.add_parser(
+        "validate-package", help="check a packaged mod ZIP or folder before publishing"
+    )
+    package_parser.add_argument("package", help="mod folder or ZIP archive to check")
+    package_parser.add_argument("--sha256", default=None, help="expected SHA-256 of the ZIP")
+    package_parser.add_argument("--json", action="store_true", help="machine readable output")
+    package_parser.set_defaults(func=_cmd_validate_package)
 
     pack_parser = subparsers.add_parser("pack", help="build the release ZIP and print its SHA-256")
     pack_parser.add_argument("directory", help="mod folder to package")

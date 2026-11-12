@@ -34,3 +34,30 @@ SDK (use an async `UnityWebRequestAssetBundle` loader there).
 The full integration guide — folder paths, manifest fields, bundle building,
 platform caveats and troubleshooting — is in
 [docs/UNITY_INTEGRATION.md](../docs/UNITY_INTEGRATION.md).
+
+## Example project
+
+`examples/BasicModLoader/` contains a bootstrap component you can copy into a
+Unity scene. `examples/sample-mod/` is a valid package for local loader tests;
+its `.bundle` is a placeholder and must be replaced with a real AssetBundle.
+
+## Tests
+
+The SDK has a dependency-free smoke suite that compiles against minimal Unity
+stubs, so it runs without the Unity Editor:
+
+```bash
+dotnet run --project tests/WorkmodsSDK.Tests.csproj
+```
+
+## Package validation
+
+Before publishing, check both the source folder and the final ZIP:
+
+```bash
+python -m workmods validate path/to/my-mod
+python -m workmods validate-package path/to/my-mod.zip --sha256 <expected-digest>
+```
+
+The package validator rejects unsafe archive entries, oversized archives and
+SHA-256 mismatches, and applies the same manifest checks as the desktop editor.

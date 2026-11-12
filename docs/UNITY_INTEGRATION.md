@@ -12,6 +12,15 @@ file to a runtime assembly that references `UnityEngine`).
 The SDK targets C# 7.3 and Unity 2019.4+. It compiles for Mono and IL2CPP; only
 DLL loading is Mono-only.
 
+A ready-to-copy bootstrap is in `unity-sdk/examples/BasicModLoader/`, and
+`unity-sdk/examples/sample-mod/` is a valid package for local discovery tests
+(the bundle inside the sample is a placeholder). To run the SDK smoke suite
+without Unity:
+
+```bash
+dotnet run --project unity-sdk/tests/WorkmodsSDK.Tests.csproj
+```
+
 ## 2. Where mods live
 
 Workmods installs each mod into its own folder:

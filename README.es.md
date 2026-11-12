@@ -94,6 +94,15 @@ No necesitas permiso de escritura en el registro: el pull request sale de tu for
 
 **Actualizar:** sube la versión y publica de nuevo; el nuevo pull request reemplaza la misma solicitud. **Unpublish** abre un pull request para eliminarla; tu repositorio y tus releases siguen disponibles.
 
+Comprueba la carpeta o el ZIP final antes de publicar:
+
+```bash
+python -m workmods validate my-mod
+python -m workmods validate-package dist/my-mod.zip --sha256 <hash-esperado>
+```
+
+La validación del paquete rechaza entradas de archivo inseguras, archivos demasiado grandes y un SHA-256 incorrecto.
+
 Guía completa: [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ---
@@ -151,7 +160,7 @@ Referencia completa de campos y formato de solicitud: [docs/REGISTRY_SCHEMA.md](
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 59 pruebas, no requiere pantalla
+pytest              # 66 pruebas, no requiere pantalla
 ruff check workmods tests
 ```
 

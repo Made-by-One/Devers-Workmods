@@ -94,6 +94,15 @@ python main.py
 
 **更新：** 提升版本并重新发布，新的 pull request 会替换同一份提交。**Unpublish** 会创建删除提交的 pull request；你的仓库和 Release 仍然保留。
 
+发布前检查文件夹或最终 ZIP：
+
+```bash
+python -m workmods validate my-mod
+python -m workmods validate-package dist/my-mod.zip --sha256 <预期哈希>
+```
+
+包验证会拒绝不安全的归档条目、过大的归档以及 SHA-256 不匹配。
+
 完整指南：[docs/PUBLISHING.md](docs/PUBLISHING.md)。
 
 ---
@@ -151,7 +160,7 @@ SDK 会记录发现的模组、加载的 bundle 和错误，但不会向游戏�
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 59 个测试，无需显示器
+pytest              # 66 个测试，无需显示器
 ruff check workmods tests
 ```
 

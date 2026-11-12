@@ -64,10 +64,15 @@ python -m workmods validate neon-ui
 
 # Build the release ZIP and print its SHA-256 (same packaging as the publisher)
 python -m workmods pack neon-ui --out dist/neon-ui.zip
+
+# Re-open the final ZIP and verify its contents and digest before uploading
+python -m workmods validate-package dist/neon-ui.zip --sha256 <expected-digest>
 ```
 
-Add `--json` to `validate` or `pack` for machine-readable output; both commands
-exit non-zero on validation errors, so they work as a pre-commit or CI gate.
+Add `--json` to `validate`, `validate-package` or `pack` for machine-readable
+output; all commands exit non-zero on validation errors, so they work as a
+pre-commit or CI gate. `validate-package` rejects path traversal, oversized
+archives and SHA-256 mismatches before a release asset is published.
 
 When you pick a **Files Folder** in the editor, a `workmod.json` in that folder
 automatically fills any fields you have not typed yet (name, version, author,

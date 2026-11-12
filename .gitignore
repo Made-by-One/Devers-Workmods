@@ -18,6 +18,8 @@ Thumbs.db
 build/
 dist/
 *.spec
+bin/
+obj/
 
 # Personal design review screenshots
 design-preview/

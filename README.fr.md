@@ -94,6 +94,15 @@ Aucun droit d’écriture sur le registre n’est nécessaire : la pull request 
 
 **Mise à jour :** augmentez la version et republiez — la nouvelle pull request remplace la même soumission. **Unpublish** ouvre une pull request de suppression ; votre dépôt et vos releases restent en ligne.
 
+Vérifiez le dossier ou le ZIP final avant publication :
+
+```bash
+python -m workmods validate my-mod
+python -m workmods validate-package dist/my-mod.zip --sha256 <empreinte-attendue>
+```
+
+La validation du paquet rejette les entrées d'archive non sûres, les archives trop volumineuses et un SHA-256 incorrect.
+
 Guide complet : [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ---
@@ -151,7 +160,7 @@ Référence complète des champs et format des soumissions : [docs/REGISTRY_SCHE
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 59 tests, aucun écran requis
+pytest              # 66 tests, aucun écran requis
 ruff check workmods tests
 ```
 

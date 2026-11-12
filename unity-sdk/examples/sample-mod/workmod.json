@@ -1,0 +1,16 @@
+{
+  "id": "sample-mod",
+  "game_id": "sample-game",
+  "name": "Sample Mod",
+  "version": "1.0.0",
+  "author": "Workmods",
+  "description": "Minimal example mod used to test the Unity SDK loader.",
+  "entry_asset": "SamplePrefab",
+  "bundles": [
+    "sample.bundle"
+  ],
+  "tags": [
+    "example",
+    "sdk"
+  ]
+}
