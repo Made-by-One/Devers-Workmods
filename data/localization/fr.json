@@ -133,5 +133,10 @@
   "see_registry_repo": "(voir le dépôt du registre)",
   "removal_note": "Le mod disparaîtra du catalogue après la fusion par un mainteneur.",
   "delete_local_title": "Suppression",
-  "imported_metadata": "Métadonnées importées depuis workmod.json."
+  "imported_metadata": "Métadonnées importées depuis workmod.json.",
+  "found": "TROUVÉS",
+  "account_hint": "Connectez-vous pour créer, tester et publier des mods.",
+  "section_details": "DÉTAILS DU MOD",
+  "section_media": "DESCRIPTION ET MÉDIAS",
+  "section_package": "PAQUET"
 }

@@ -133,5 +133,10 @@
   "see_registry_repo": "（见注册表仓库）",
   "removal_note": "维护者合并后，该模组会从目录中消失。",
   "delete_local_title": "删除",
-  "imported_metadata": "已从 workmod.json 导入元数据。"
+  "imported_metadata": "已从 workmod.json 导入元数据。",
+  "found": "个结果",
+  "account_hint": "登录后即可创建、预览和发布模组。",
+  "section_details": "模组信息",
+  "section_media": "描述与媒体",
+  "section_package": "打包"
 }

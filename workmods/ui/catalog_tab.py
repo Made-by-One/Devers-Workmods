@@ -65,7 +65,11 @@ class CatalogTab(QWidget):
         self.search = QLineEdit()
         self.search.setPlaceholderText(self.loc.t("search", "SEARCH MODS..."))
         self.search.setClearButtonEnabled(True)
+        self.search.addAction(load_icon("search"), QLineEdit.ActionPosition.LeadingPosition)
         self.search.textChanged.connect(self._refresh_list)
+
+        self.count_label = QLabel()
+        self.count_label.setObjectName("countChip")
 
         self.game_filter = QComboBox()
         self.game_filter.setMinimumWidth(190)
@@ -77,7 +81,8 @@ class CatalogTab(QWidget):
         self.btn_refresh.setToolTip(self.loc.t("refresh", "Refresh catalog"))
         self.btn_refresh.clicked.connect(self.reload)
 
-        top_layout.addWidget(self.search)
+        top_layout.addWidget(self.search, 1)
+        top_layout.addWidget(self.count_label)
         top_layout.addWidget(self.game_filter)
         top_layout.addWidget(self.btn_refresh)
         layout.addLayout(top_layout)
@@ -124,6 +129,24 @@ class CatalogTab(QWidget):
         self.desc_label.setObjectName("description")
         self.desc_label.setReadOnly(True)
 
+        self.info_frame = QFrame()
+        self.info_frame.setObjectName("statCard")
+        info_grid = QHBoxLayout(self.info_frame)
+        info_grid.setContentsMargins(16, 12, 16, 12)
+        info_grid.setSpacing(20)
+        self.info_game = self._info_cell(
+            info_grid, self.loc.t("game", "GAME").rstrip(":")
+        )
+        self.info_version = self._info_cell(
+            info_grid, self.loc.t("version", "Version:").rstrip(":")
+        )
+        self.info_author = self._info_cell(
+            info_grid, self.loc.t("author_label", "Author:").rstrip(":")
+        )
+        self.info_entry = self._info_cell(
+            info_grid, self.loc.t("entry_asset", "Entry Asset:").rstrip(":")
+        )
+
         self.btn_install = QPushButton(self.loc.t("install", "INSTALL"))
         self.btn_install.setObjectName("primary")
         self.btn_install.setMinimumHeight(42)
@@ -141,6 +164,7 @@ class CatalogTab(QWidget):
         detail_layout.addLayout(info_layout)
         detail_layout.addLayout(self.tags_row)
         detail_layout.addWidget(self.desc_label, 1)
+        detail_layout.addWidget(self.info_frame)
 
         btn_box = QHBoxLayout()
         btn_box.setSpacing(10)
@@ -155,6 +179,8 @@ class CatalogTab(QWidget):
         layout.addWidget(splitter, 1)
 
         populate_game_filter(self.game_filter, self.config, None, self.loc.t("all_games", "ALL GAMES"))
+        self.count_label.setText(f"0 {self.loc.t('found', 'FOUND')}")
+        self._show_empty()
 
     # -- registry -----------------------------------------------------------
     def reload(self) -> None:
@@ -175,6 +201,8 @@ class CatalogTab(QWidget):
             self._refresh_list()
             return
         self.list.clear()
+        self.count_label.setText(f"0 {self.loc.t('found', 'FOUND')}")
+        self._show_empty()
         self.desc_label.setPlainText(
             f"{self.loc.t('registry_error', 'Could not load the registry')}:\n{message}"
         )
@@ -221,11 +249,24 @@ class CatalogTab(QWidget):
             if mod.id == current_id:
                 self.list.setCurrentItem(item)
         self.list.blockSignals(False)
+        self.count_label.setText(f"{len(mods)} {self.loc.t('found', 'FOUND')}")
 
         if not mods:
             self._show_empty()
         elif self.list.currentItem() is None and self.list.count():
             self.list.setCurrentRow(0)
+
+    def _info_cell(self, row: QHBoxLayout, title: str) -> QLabel:
+        cell = QVBoxLayout()
+        cell.setSpacing(2)
+        label = QLabel(title.upper())
+        label.setObjectName("statLabel")
+        value = QLabel("—")
+        value.setObjectName("infoValue")
+        cell.addWidget(label)
+        cell.addWidget(value)
+        row.addLayout(cell, 1)
+        return value
 
     def _show_empty(self) -> None:
         self.title_label.setText(self.loc.t("select_mod", "SELECT A MOD"))
@@ -239,6 +280,7 @@ class CatalogTab(QWidget):
         self.banner_label.clear_cover(self.loc.t("no_cover", "NO COVER"))
         self.icon_label.clear_cover("")
         self._clear_layout(self.tags_row)
+        self.info_frame.hide()
         self.btn_install.setEnabled(False)
         self.btn_folder.hide()
 
@@ -278,6 +320,11 @@ class CatalogTab(QWidget):
             f"  ·  {mod.version_label}  ·  {game.name if game else mod.game_id}"
         )
         self.desc_label.setPlainText(mod.description or self.loc.t("no_description", "No description."))
+        self.info_game.setText(game.name if game else mod.game_id)
+        self.info_version.setText(mod.version_label)
+        self.info_author.setText(mod.author or self.loc.t("unknown", "Unknown"))
+        self.info_entry.setText(mod.entry_asset or "—")
+        self.info_frame.show()
         self._clear_layout(self.tags_row)
         for tag in mod.tags[:6]:
             chip = QLabel(tag)

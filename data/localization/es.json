@@ -133,5 +133,10 @@
   "see_registry_repo": "(ver el repositorio del registro)",
   "removal_note": "El mod desaparecerá del catálogo cuando un moderador lo fusione.",
   "delete_local_title": "Borrar",
-  "imported_metadata": "Metadatos importados desde workmod.json."
+  "imported_metadata": "Metadatos importados desde workmod.json.",
+  "found": "ENCONTRADOS",
+  "account_hint": "Inicia sesión para crear, probar y publicar mods.",
+  "section_details": "DATOS DEL MOD",
+  "section_media": "DESCRIPCIÓN Y MEDIOS",
+  "section_package": "PAQUETE"
 }

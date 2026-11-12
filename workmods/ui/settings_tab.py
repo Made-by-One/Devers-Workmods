@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -24,6 +25,7 @@ from workmods.config import CONFIG_DIR, WorkmodsConfig, default_mods_dir
 from workmods.i18n import Localization, get_language_options, resolve_language
 from workmods.models import DEFAULT_GAME_ID, Game, normalize_game_id
 from workmods.ui.theme import load_icon
+from workmods.ui.widgets import ModRow
 from workmods.utils import open_folder
 
 
@@ -145,7 +147,6 @@ class SettingsTab(QWidget):
         registry_row.addWidget(self.registry_input, 1)
         registry_row.addWidget(save_registry)
         registry_box.addLayout(registry_row)
-        layout.addWidget(registry_card)
 
         prefs_card, prefs_box = self._card(self.loc.t("preferences", "PREFERENCES"))
 
@@ -176,11 +177,20 @@ class SettingsTab(QWidget):
         active_row.addWidget(self.active_game_combo)
         active_row.addStretch()
         prefs_box.addLayout(active_row)
-        layout.addWidget(prefs_card)
+
+        top_cards = QGridLayout()
+        top_cards.setHorizontalSpacing(14)
+        top_cards.setVerticalSpacing(14)
+        top_cards.addWidget(registry_card, 0, 0)
+        top_cards.addWidget(prefs_card, 0, 1)
+        top_cards.setColumnStretch(0, 3)
+        top_cards.setColumnStretch(1, 2)
+        layout.addLayout(top_cards)
 
         games_card, games_box = self._card(self.loc.t("games", "GAME PROFILES"))
         self.games_list = QListWidget()
         self.games_list.setMinimumHeight(150)
+        self.games_list.setSpacing(0)
         games_box.addWidget(self.games_list, 1)
 
         game_buttons = QHBoxLayout()
@@ -231,11 +241,17 @@ class SettingsTab(QWidget):
 
         self.games_list.clear()
         for game in self.config.games:
-            item = QListWidgetItem(
-                f"{game.display_name}  →  {self.config.install_dir_for(game.id)}"
-            )
+            item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, game.id)
+            item.setSizeHint(QSize(0, 58))
             self.games_list.addItem(item)
+            self.games_list.setItemWidget(
+                item,
+                ModRow(
+                    game.display_name,
+                    f"{game.id}  ·  {self.config.install_dir_for(game.id)}",
+                ),
+            )
 
     # -- persistence --------------------------------------------------------
     def _save_registry(self) -> None:

@@ -133,5 +133,10 @@
   "see_registry_repo": "(see the registry repository)",
   "removal_note": "The mod disappears from the catalog after a maintainer merges it.",
   "delete_local_title": "Delete",
-  "imported_metadata": "Imported metadata from workmod.json."
+  "imported_metadata": "Imported metadata from workmod.json.",
+  "found": "FOUND",
+  "account_hint": "Sign in to create, preview and publish mods.",
+  "section_details": "MOD DETAILS",
+  "section_media": "DESCRIPTION & MEDIA",
+  "section_package": "PACKAGE"
 }

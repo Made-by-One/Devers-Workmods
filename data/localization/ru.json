@@ -133,5 +133,10 @@
   "see_registry_repo": "(см. репозиторий реестра)",
   "removal_note": "Мод исчезнет из каталога после того, как модератор выполнит слияние.",
   "delete_local_title": "Удаление",
-  "imported_metadata": "Метаданные импортированы из workmod.json."
+  "imported_metadata": "Метаданные импортированы из workmod.json.",
+  "found": "НАЙДЕНО",
+  "account_hint": "Войдите, чтобы создавать, проверять и публиковать моды.",
+  "section_details": "ДАННЫЕ МОДА",
+  "section_media": "ОПИСАНИЕ И МЕДИА",
+  "section_package": "ПАКЕТ"
 }

@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
     def _build_header(self) -> QWidget:
         header = QWidget()
         header.setObjectName("header")
-        header.setFixedHeight(74)
+        header.setFixedHeight(76)
         row = QHBoxLayout(header)
         row.setContentsMargins(24, 12, 24, 12)
         row.setSpacing(16)
@@ -104,7 +104,7 @@ class MainWindow(QMainWindow):
 
         self.game_chip = QLabel()
         self.game_chip.setObjectName("chip")
-        version_chip = QLabel(f"ALPHA {APP_VERSION}")
+        version_chip = QLabel(f"BETA · {APP_VERSION}")
         version_chip.setObjectName("chipAccent")
         row.addWidget(self.game_chip)
         row.addWidget(version_chip)

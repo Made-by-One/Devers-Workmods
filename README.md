@@ -2,8 +2,8 @@
 
 **An independent, game-agnostic mod distribution platform — a Steam Workshop you own.**
 
-**Status:** `v1.0a` — first public alpha. Read [Known limitations](#known-limitations-before-public-launch)
-before relying on it for a real game.
+**Status:** `v1.0b` — public beta with a redesigned client. Read
+[Known limitations](#known-limitations-before-public-launch) before relying on it for a real game.
 
 Workmods is three things that share one format:
 
@@ -217,7 +217,7 @@ Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: 
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 47 tests, no display required
+pytest              # 59 tests, no display required
 ruff check workmods tests
 ```
 

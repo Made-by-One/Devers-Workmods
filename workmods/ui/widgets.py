@@ -63,8 +63,8 @@ class OptimizedFluidBackground(QWidget):
         painter.fillRect(self.rect(), Qt.GlobalColor.black)
         for y in range(self.rows):
             for x in range(self.cols):
-                brightness = int(((self.previous[y][x] + 1) / 2) * 17)
-                if brightness > 6:
+                brightness = int(((self.previous[y][x] + 1) / 2) * 12)
+                if brightness > 5:
                     painter.fillRect(
                         QRectF(x * self.cell_size, y * self.cell_size, self.cell_size - 1, self.cell_size - 1),
                         QColor(brightness, brightness, brightness),

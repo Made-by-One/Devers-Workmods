@@ -67,37 +67,54 @@ class AuthorStudioTab(QWidget):
         layout.setSpacing(12)
 
         account_card = QFrame()
-        account_card.setObjectName("card")
+        account_card.setObjectName("accountCard")
         account_box = QVBoxLayout(account_card)
-        account_box.setContentsMargins(18, 14, 18, 14)
-        account_box.setSpacing(10)
+        account_box.setContentsMargins(20, 18, 20, 18)
+        account_box.setSpacing(14)
         account_title = QLabel(self.loc.t("account", "ACCOUNT"))
         account_title.setObjectName("sectionTitle")
         account_box.addWidget(account_title)
 
         auth_layout = QHBoxLayout()
-        auth_layout.setSpacing(12)
+        auth_layout.setSpacing(14)
         self.avatar_label = QLabel()
-        self.avatar_label.setFixedSize(40, 40)
-        self.avatar_label.setStyleSheet("border-radius: 20px; background: #333;")
-        self.avatar_label.hide()
+        self.avatar_label.setFixedSize(44, 44)
+        self.avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.avatar_label.setStyleSheet("border-radius: 22px; background: #1a1727;")
+        self._set_avatar_placeholder()
 
+        identity = QVBoxLayout()
+        identity.setSpacing(2)
         self.auth_label = QLabel(self.loc.t("not_logged_in", "Not Logged In"))
         self.auth_label.setObjectName("rowTitle")
+        self.auth_hint = QLabel(self.loc.t("account_hint", "Sign in to create, preview and publish mods."))
+        self.auth_hint.setObjectName("accountHint")
+        identity.addWidget(self.auth_label)
+        identity.addWidget(self.auth_hint)
 
         self.btn_auth = QPushButton(load_icon("web"), self.loc.t("login_github", "LOGIN VIA GITHUB"))
+        self.btn_auth.setObjectName("primary")
         self.btn_auth.clicked.connect(self._login)
         self.btn_logout = QPushButton(self.loc.t("logout", "LOGOUT"))
         self.btn_logout.clicked.connect(self._logout)
         self.btn_logout.hide()
 
         auth_layout.addWidget(self.avatar_label)
-        auth_layout.addWidget(self.auth_label)
-        auth_layout.addStretch()
+        auth_layout.addLayout(identity, 1)
         auth_layout.addWidget(self.btn_auth)
         auth_layout.addWidget(self.btn_logout)
         account_box.addLayout(auth_layout)
         layout.addWidget(account_card)
+
+        stats = QHBoxLayout()
+        stats.setSpacing(12)
+        self.stat_local_value = self._stat_card(
+            stats, self.loc.t("badge_local", "Local")
+        )
+        self.stat_published_value = self._stat_card(
+            stats, self.loc.t("badge_published", "Published")
+        )
+        layout.addLayout(stats)
 
         self.section = QLabel(self.loc.t("my_mods", "MY MODS"))
         self.section.setObjectName("sectionTitle")
@@ -137,7 +154,9 @@ class AuthorStudioTab(QWidget):
         self.btn_folder.clicked.connect(self._open_folder)
         self.btn_folder.setFixedWidth(40)
 
-        self.btn_delete = QPushButton(load_icon("trash"), self.loc.t("delete", "DELETE"))
+        self.btn_delete = QPushButton(
+            load_icon("trash"), self.loc.t("delete", "DELETE").upper()
+        )
         self.btn_delete.setObjectName("danger")
         self.btn_delete.clicked.connect(self._delete_mod)
 
@@ -162,13 +181,31 @@ class AuthorStudioTab(QWidget):
 
         self._apply_auth_state()
 
+    def _stat_card(self, row: QHBoxLayout, label: str) -> QLabel:
+        card = QFrame()
+        card.setObjectName("statCard")
+        box = QVBoxLayout(card)
+        box.setContentsMargins(16, 12, 16, 12)
+        box.setSpacing(1)
+        value = QLabel("0")
+        value.setObjectName("statValue")
+        title = QLabel(label.upper())
+        title.setObjectName("statLabel")
+        box.addWidget(value)
+        box.addWidget(title)
+        row.addWidget(card, 1)
+        return value
+
+    def _set_avatar_placeholder(self) -> None:
+        self.avatar_label.setPixmap(load_icon("web").pixmap(24, 24))
+
     def _apply_auth_state(self) -> None:
         logged_in = bool(self.user_data)
         has_token = bool(self.config.github_token)
         self.btn_auth.setEnabled(not has_token)
         self.btn_auth.setVisible(not logged_in)
         self.btn_logout.setVisible(logged_in)
-        self.avatar_label.setVisible(logged_in and not self.avatar_label.pixmap().isNull())
+        self.auth_hint.setVisible(not logged_in)
         self.btn_new_repo.setEnabled(logged_in)
         self.btn_create.setEnabled(logged_in)
         self.btn_edit.setEnabled(logged_in)
@@ -232,7 +269,7 @@ class AuthorStudioTab(QWidget):
             self._avatar_worker.start()
 
     def _on_avatar(self, _tag: str, data: bytes) -> None:
-        self.avatar_label.setPixmap(scale_pixmap(data, 40, 40))
+        self.avatar_label.setPixmap(scale_pixmap(data, 44, 44))
         self.avatar_label.show()
 
     def _on_profile_error(self, message: str) -> None:
@@ -249,7 +286,7 @@ class AuthorStudioTab(QWidget):
         self.config.save()
         self.user_data = {}
         self.user_repos = []
-        self.avatar_label.clear()
+        self._set_avatar_placeholder()
         self._apply_auth_state()
         if not silent:
             QMessageBox.information(
@@ -318,6 +355,9 @@ class AuthorStudioTab(QWidget):
         self.mod_list.blockSignals(False)
         self.mod_list.setVisible(bool(rows))
         self.empty_label.setVisible(not rows)
+        published_count = sum(1 for mod, _root in rows if mod.mod_id in published_ids)
+        self.stat_local_value.setText(str(len(rows)))
+        self.stat_published_value.setText(str(published_count))
         self.section.setText(f"{self.loc.t('my_mods', 'MY MODS')} ({len(rows)})")
 
     def _selected_key(self) -> str:

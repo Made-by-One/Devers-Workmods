@@ -133,5 +133,10 @@
   "see_registry_repo": "(siehe Registry-Repository)",
   "removal_note": "Der Mod verschwindet aus dem Katalog, sobald ein Maintainer den Pull Request merged.",
   "delete_local_title": "Löschen",
-  "imported_metadata": "Metadaten aus workmod.json importiert."
+  "imported_metadata": "Metadaten aus workmod.json importiert.",
+  "found": "GEFUNDEN",
+  "account_hint": "Melde dich an, um Mods zu erstellen, zu testen und zu veröffentlichen.",
+  "section_details": "MOD-DETAILS",
+  "section_media": "BESCHREIBUNG & MEDIEN",
+  "section_package": "PAKET"
 }

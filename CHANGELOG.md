@@ -3,10 +3,32 @@
 All notable changes to Workmods. The format follows Keep a Changelog and the
 project uses semantic versioning.
 
-## [Unreleased]
+## [1.0b] — 2026-11-12
+
+Public beta. The client keeps the 1.0 format and workflow but gets a full design
+pass plus the authoring tools that were missing from the alpha.
+
+### Added
+
+- **Six-language interface** (`en`, `ru`, `de`, `es`, `fr`, `zh`) with native
+  language names, system-language detection on first launch and instant switching
+  without restarting the client.
+- **Mod author CLI**: `python -m workmods init`, `validate` and `pack`; the editor
+  auto-fills metadata from the generated `workmod.json`.
+- **Redesigned beta interface**: richer catalog detail with a metadata strip,
+  master-detail installed mods with local actions, author account and draft/published
+  stats, a two-column settings layout and a sectioned two-column mod editor.
+- Submission validator: path/id/game consistency, SHA-256 format, GitHub release
+  URLs, tags, unknown-field rejection and duplicate-id detection.
+- Removal through a pull request that deletes the submission file.
+- `submissions/README.md`; updated schema, publishing and architecture docs;
+  13 new tests.
+- 12 tests for localization and the author CLI; 59 tests total.
 
 ### Changed
 
+- Version bumped to `1.0b`; the header now shows the beta channel.
+- Refined dark palette, typography, tabs, cards, inputs and list selection states.
 - **Publishing is now a pull request**, not a `repository_dispatch`. The registry
   is generated from `submissions/<game_id>/<mod_id>.json`; the client forks the
   registry when needed, opens a pull request and shows its URL, so no write access
@@ -14,14 +36,6 @@ project uses semantic versioning.
 - Registry CI is split into **Validate Submission** (pull requests, read-only) and
   **Rebuild Mod Registry** (push to `main`, rebuilds `registry.json`).
 - `BOT_SECRET` / `WORKMODS_BOT_SECRET` were removed from the client and the bot.
-
-### Added
-
-- Submission validator: path/id/game consistency, SHA-256 format, GitHub release
-  URLs, tags, unknown-field rejection and duplicate-id detection.
-- Removal through a pull request that deletes the submission file.
-- `submissions/README.md`; updated schema, publishing and architecture docs;
-  13 new tests (47 total).
 
 ### Fixed
 

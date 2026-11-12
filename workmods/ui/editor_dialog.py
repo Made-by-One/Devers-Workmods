@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QFileDialog,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -64,24 +65,42 @@ class ModEditorDialog(QDialog):
         self._unpublish_worker: UnpublishWorker | None = None
 
         self.setWindowTitle(self.loc.t("mod_editor", "Mod Editor"))
-        self.resize(560, 840)
+        self.setMinimumSize(960, 620)
+        self.resize(980, 720)
         self._build_ui()
         self._load_existing()
 
     # -- construction -------------------------------------------------------
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(18, 16, 18, 16)
-        outer.setSpacing(12)
+        outer.setContentsMargins(22, 18, 22, 18)
+        outer.setSpacing(14)
+
+        header = QHBoxLayout()
+        header.setSpacing(10)
+        title = QLabel(self.loc.t("mod_editor", "Mod Editor"))
+        title.setObjectName("panelTitle")
+        id_chip = QLabel(self.mod.id)
+        id_chip.setObjectName("chip")
+        header.addWidget(title)
+        header.addWidget(id_chip)
+        header.addStretch()
+        outer.addLayout(header)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         container = QWidget()
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(6, 4, 6, 4)
-        layout.setSpacing(10)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(16)
 
         self.repo_combo = QComboBox()
+        self.repo_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.repo_combo.setMinimumContentsLength(20)
         self.repo_combo.addItem(self.loc.t("local_only", "Local Only (No Repo)"), "")
         for repo in self.repos:
             name = repo["full_name"] if isinstance(repo, dict) else str(repo)
@@ -92,6 +111,10 @@ class ModEditorDialog(QDialog):
 
         self.game_combo = QComboBox()
         self.game_combo.setEditable(True)
+        self.game_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.game_combo.setMinimumContentsLength(24)
         self.game_combo.setToolTip(
             self.loc.t(
                 "target_game_tooltip",
@@ -104,6 +127,8 @@ class ModEditorDialog(QDialog):
         if self.game_combo.findData(self.mod.game_id) < 0:
             self.game_combo.addItem(self.mod.game_id, self.mod.game_id)
         self.game_combo.setCurrentIndex(max(self.game_combo.findData(self.mod.game_id), 0))
+        if self.game_combo.lineEdit() is not None:
+            self.game_combo.lineEdit().setCursorPosition(0)
 
         self.name_input = QLineEdit(self.mod.name if self.mod.name != self.mod.id else "")
         self.author_input = QLineEdit(self.author)
@@ -113,7 +138,7 @@ class ModEditorDialog(QDialog):
 
         self.desc_input = QTextEdit()
         self.desc_input.setPlainText(self.mod.description)
-        self.desc_input.setFixedHeight(110)
+        self.desc_input.setMinimumHeight(132)
 
         self.version_input = QLineEdit(self.mod.version or "1.0.0")
         self.tags_input = QLineEdit(", ".join(self.mod.tags))
@@ -124,15 +149,16 @@ class ModEditorDialog(QDialog):
         )
 
         preview_style = (
-            "border: 1px solid #262636; border-radius: 10px; "
-            "background: #0c0c14; color: #6f6f88;"
+            "border: 1px solid #2a2a3b; border-radius: 10px; "
+            "background: #0b0b13; color: #6f6f88;"
         )
         self.icon_preview = QLabel(self.loc.t("no_icon", "No Icon"))
-        self.icon_preview.setFixedSize(64, 64)
+        self.icon_preview.setFixedSize(76, 76)
         self.icon_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.icon_preview.setStyleSheet(preview_style)
         self.banner_preview = QLabel(self.loc.t("no_banner", "No Banner"))
-        self.banner_preview.setFixedSize(300, 100)
+        self.banner_preview.setMinimumSize(260, 96)
+        self.banner_preview.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.banner_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.banner_preview.setStyleSheet(preview_style)
 
@@ -143,27 +169,89 @@ class ModEditorDialog(QDialog):
         self.btn_files = QPushButton(self.loc.t("select_mod_files", "SELECT MOD FILES FOLDER"))
         self.btn_files.clicked.connect(self._pick_files_folder)
         for button in (self.btn_icon, self.btn_banner, self.btn_files):
-            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            button.setMinimumHeight(34)
 
         form = QFormLayout()
-        form.setHorizontalSpacing(16)
-        form.setVerticalSpacing(10)
+        form.setHorizontalSpacing(18)
+        form.setVerticalSpacing(12)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         form.addRow(self.loc.t("repository", "GitHub Repository:"), self.repo_combo)
         form.addRow(self.loc.t("mod_id_auto", "Mod ID (Auto):"), self.id_input)
         form.addRow(self.loc.t("target_game", "Target Game:"), self.game_combo)
         form.addRow(self.loc.t("mod_name", "Mod Name:"), self.name_input)
         form.addRow(self.loc.t("author_label", "Author:"), self.author_input)
-        form.addRow(self.loc.t("description", "Description:"), self.desc_input)
         form.addRow(self.loc.t("version", "Version:"), self.version_input)
         form.addRow(self.loc.t("tags", "Tags:"), self.tags_input)
         form.addRow(self.loc.t("entry_asset", "Entry Asset:"), self.entry_asset_input)
-        form.addRow(self.loc.t("icon", "Icon:"), self.btn_icon)
-        form.addRow(self.loc.t("preview", "Preview:"), self.icon_preview)
-        form.addRow(self.loc.t("banner", "Banner:"), self.btn_banner)
-        form.addRow(self.loc.t("preview", "Preview:"), self.banner_preview)
-        form.addRow(self.loc.t("files_folder", "Files Folder:"), self.btn_files)
+        for field in (
+            self.repo_combo,
+            self.id_input,
+            self.game_combo,
+            self.name_input,
+            self.author_input,
+            self.version_input,
+            self.tags_input,
+            self.entry_asset_input,
+        ):
+            label = form.labelForField(field)
+            if label is not None:
+                label.setObjectName("fieldLabel")
 
-        layout.addLayout(form)
+        details_card = QFrame()
+        details_card.setObjectName("card")
+        details_box = QVBoxLayout(details_card)
+        details_box.setContentsMargins(18, 16, 18, 16)
+        details_box.setSpacing(14)
+        details_title = QLabel(self.loc.t("section_details", "MOD DETAILS"))
+        details_title.setObjectName("sectionTitle")
+        details_box.addWidget(details_title)
+        details_box.addLayout(form)
+        details_box.addStretch()
+
+        media_card = QFrame()
+        media_card.setObjectName("card")
+        media_box = QVBoxLayout(media_card)
+        media_box.setContentsMargins(18, 16, 18, 16)
+        media_box.setSpacing(12)
+        media_title = QLabel(self.loc.t("section_media", "DESCRIPTION & MEDIA"))
+        media_title.setObjectName("sectionTitle")
+        media_box.addWidget(media_title)
+
+        desc_title = QLabel(self.loc.t("description", "Description:"))
+        desc_title.setObjectName("fieldLabel")
+        media_box.addWidget(desc_title)
+        media_box.addWidget(self.desc_input)
+
+        media_row = QHBoxLayout()
+        media_row.setSpacing(12)
+        icon_col = QVBoxLayout()
+        icon_col.setSpacing(8)
+        icon_col.addWidget(self.icon_preview)
+        icon_col.addWidget(self.btn_icon)
+        banner_col = QVBoxLayout()
+        banner_col.setSpacing(8)
+        banner_col.addWidget(self.banner_preview)
+        banner_col.addWidget(self.btn_banner)
+        media_row.addLayout(icon_col)
+        media_row.addLayout(banner_col, 1)
+        media_box.addLayout(media_row)
+
+        divider = QFrame()
+        divider.setObjectName("divider")
+        divider.setFixedHeight(1)
+        media_box.addWidget(divider)
+
+        package_title = QLabel(self.loc.t("section_package", "PACKAGE"))
+        package_title.setObjectName("sectionTitle")
+        media_box.addWidget(package_title)
+        media_box.addWidget(self.btn_files)
+        media_box.addStretch()
+
+        columns = QHBoxLayout()
+        columns.setSpacing(16)
+        columns.addWidget(details_card, 1)
+        columns.addWidget(media_card, 1)
+        layout.addLayout(columns)
         layout.addStretch()
         scroll.setWidget(container)
         outer.addWidget(scroll, 1)
@@ -186,10 +274,10 @@ class ModEditorDialog(QDialog):
         self.btn_unpublish.clicked.connect(self.unpublish_mod)
         self.btn_unpublish.setVisible(self.is_published)
 
-        buttons.addWidget(save_btn)
-        buttons.addWidget(self.btn_publish)
         buttons.addWidget(self.btn_unpublish)
         buttons.addStretch()
+        buttons.addWidget(save_btn)
+        buttons.addWidget(self.btn_publish)
         outer.addLayout(buttons)
 
     def _load_existing(self) -> None:
@@ -199,7 +287,7 @@ class ModEditorDialog(QDialog):
         if (target / "icon.png").is_file():
             self.icon_path = str(target / "icon.png")
             self.icon_preview.setPixmap(
-                QPixmap(self.icon_path).scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio)
+                QPixmap(self.icon_path).scaled(76, 76, Qt.AspectRatioMode.KeepAspectRatio)
             )
             self.btn_icon.setText(f"{self.loc.t('icon', 'Icon:').rstrip(':')}: icon.png")
         if (target / "banner.png").is_file():
@@ -230,7 +318,7 @@ class ModEditorDialog(QDialog):
         if kind == "icon":
             self.icon_path = filename
             self.icon_preview.setPixmap(
-                QPixmap(filename).scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio)
+                QPixmap(filename).scaled(76, 76, Qt.AspectRatioMode.KeepAspectRatio)
             )
             self.btn_icon.setText(
                 f"{self.loc.t('icon', 'Icon:').rstrip(':')}: {Path(filename).name}"
