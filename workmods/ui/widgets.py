@@ -6,8 +6,8 @@ import math
 import time
 
 import requests
-from PyQt6.QtCore import QRectF, Qt, QThread, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
+from PyQt6.QtCore import QBuffer, QIODevice, QRectF, Qt, QThread, QTimer, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap, QMovie
 from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -84,12 +84,46 @@ class CoverLabel(QLabel):
         self.radius = radius
         self.placeholder = placeholder
         self._cover = QPixmap()
+        self._movie: QMovie | None = None
+        self._movie_buffer: QBuffer | None = None
 
     def set_cover(self, pixmap: QPixmap) -> None:
+        self._stop_movie()
         self._cover = pixmap
         self.update()
 
+    def set_movie(self, data: bytes) -> None:
+        self._stop_movie()
+        buffer = QBuffer()
+        buffer.setData(data)
+        buffer.open(QIODevice.OpenModeFlag.ReadOnly)
+        movie = QMovie()
+        movie.setDevice(buffer)
+        movie.frameChanged.connect(self._on_movie_frame)
+        self._movie = movie
+        self._movie_buffer = buffer
+        movie.start()
+        frame = movie.currentPixmap()
+        if not frame.isNull():
+            self._cover = frame
+        self.update()
+
+    def _on_movie_frame(self) -> None:
+        if self._movie is not None:
+            frame = self._movie.currentPixmap()
+            if not frame.isNull():
+                self._cover = frame
+            self.update()
+
+    def _stop_movie(self) -> None:
+        if self._movie is not None:
+            self._movie.stop()
+            self._movie.deleteLater()
+        self._movie = None
+        self._movie_buffer = None
+
     def clear_cover(self, placeholder: str | None = None) -> None:
+        self._stop_movie()
         self._cover = QPixmap()
         if placeholder is not None:
             self.placeholder = placeholder

@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QMovie, QPixmap
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -32,7 +32,7 @@ from workmods.i18n import Localization
 from workmods.models import Mod, normalize_game_id
 from workmods.publisher import PublishRequest
 from workmods.storage import read_mod_meta, write_mod_meta
-from workmods.ui.widgets import UploadDialog
+from workmods.ui.widgets import ElidedLabel, UploadDialog
 from workmods.ui.workers import PublishWorker, UnpublishWorker
 
 
@@ -228,10 +228,16 @@ class ModEditorDialog(QDialog):
         icon_col.setSpacing(8)
         icon_col.addWidget(self.icon_preview)
         icon_col.addWidget(self.btn_icon)
+        self.icon_name_label = ElidedLabel("")
+        self.icon_name_label.setObjectName("meta")
+        icon_col.addWidget(self.icon_name_label)
         banner_col = QVBoxLayout()
         banner_col.setSpacing(8)
         banner_col.addWidget(self.banner_preview)
         banner_col.addWidget(self.btn_banner)
+        self.banner_name_label = ElidedLabel("")
+        self.banner_name_label.setObjectName("meta")
+        banner_col.addWidget(self.banner_name_label)
         media_row.addLayout(icon_col)
         media_row.addLayout(banner_col, 1)
         media_box.addLayout(media_row)
@@ -284,18 +290,16 @@ class ModEditorDialog(QDialog):
         if not self.mod.id:
             return
         target = self.config.install_dir_for(self._original_game_id) / self.mod.id
-        if (target / "icon.png").is_file():
-            self.icon_path = str(target / "icon.png")
-            self.icon_preview.setPixmap(
-                QPixmap(self.icon_path).scaled(76, 76, Qt.AspectRatioMode.KeepAspectRatio)
-            )
-            self.btn_icon.setText(f"{self.loc.t('icon', 'Icon:').rstrip(':')}: icon.png")
-        if (target / "banner.png").is_file():
-            self.banner_path = str(target / "banner.png")
-            self.banner_preview.setPixmap(
-                QPixmap(self.banner_path).scaled(300, 100, Qt.AspectRatioMode.KeepAspectRatio)
-            )
-            self.btn_banner.setText(f"{self.loc.t('banner', 'Banner:').rstrip(':')}: banner.png")
+        icon_name = self._find_saved_image(target, "icon")
+        if icon_name:
+            self.icon_path = str(target / icon_name)
+            self._set_image_preview(self.icon_preview, self.icon_path, (76, 76))
+            self.icon_name_label.setText(icon_name)
+        banner_name = self._find_saved_image(target, "banner")
+        if banner_name:
+            self.banner_path = str(target / banner_name)
+            self._set_image_preview(self.banner_preview, self.banner_path, (300, 100))
+            self.banner_name_label.setText(banner_name)
 
     # -- field helpers ------------------------------------------------------
     def selected_game_id(self) -> str:
@@ -308,29 +312,48 @@ class ModEditorDialog(QDialog):
         data = self.repo_combo.currentData()
         return str(data or "").strip()
 
+    _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".ico")
+
+    def _find_saved_image(self, folder: Path, kind: str) -> str | None:
+        for extension in self._IMAGE_EXTENSIONS:
+            candidate = folder / f"{kind}{extension}"
+            if candidate.is_file():
+                return candidate.name
+        return None
+
+    def _set_image_preview(self, label: QLabel, filename: str, size: tuple[int, int]) -> None:
+        previous = getattr(label, "_movie", None)
+        if previous is not None:
+            previous.stop()
+        label.setMovie(None)
+        if filename.lower().endswith(".gif"):
+            movie = QMovie(filename)
+            label._movie = movie
+            label.setMovie(movie)
+            movie.start()
+            label.setText("")
+            return
+        label._movie = None
+        pixmap = QPixmap(filename).scaled(
+            size[0], size[1], Qt.AspectRatioMode.KeepAspectRatio
+        )
+        label.setPixmap(pixmap)
+
     def _pick_image(self, kind: str) -> None:
         title = self.loc.t("select_icon" if kind == "icon" else "select_banner")
         filename, _ = QFileDialog.getOpenFileName(
-            self, title, "", "Images (*.png *.jpg *.jpeg *.ico)"
+            self, title, "", "Images (*.png *.jpg *.jpeg *.gif *.ico)"
         )
         if not filename:
             return
         if kind == "icon":
             self.icon_path = filename
-            self.icon_preview.setPixmap(
-                QPixmap(filename).scaled(76, 76, Qt.AspectRatioMode.KeepAspectRatio)
-            )
-            self.btn_icon.setText(
-                f"{self.loc.t('icon', 'Icon:').rstrip(':')}: {Path(filename).name}"
-            )
+            self._set_image_preview(self.icon_preview, filename, (76, 76))
+            self.icon_name_label.setText(Path(filename).name)
         else:
             self.banner_path = filename
-            self.banner_preview.setPixmap(
-                QPixmap(filename).scaled(300, 100, Qt.AspectRatioMode.KeepAspectRatio)
-            )
-            self.btn_banner.setText(
-                f"{self.loc.t('banner', 'Banner:').rstrip(':')}: {Path(filename).name}"
-            )
+            self._set_image_preview(self.banner_preview, filename, (300, 100))
+            self.banner_name_label.setText(Path(filename).name)
 
     def _pick_files_folder(self) -> None:
         directory = QFileDialog.getExistingDirectory(
@@ -430,12 +453,25 @@ class ModEditorDialog(QDialog):
             shutil.move(str(old_target), str(target))
         target.mkdir(parents=True, exist_ok=True)
 
+        # Replace any previously saved icon/banner so a changed format (for
+        # example PNG -> GIF) does not leave a stale file behind.
+        for kind in ("icon", "banner"):
+            for old in target.glob(f"{kind}.*"):
+                if old.is_file() and old.suffix.lower() in self._IMAGE_EXTENSIONS:
+                    old.unlink()
+
         if self.icon_path and os.path.isfile(self.icon_path):
-            destination = (target / "icon.png").resolve()
+            suffix = Path(self.icon_path).suffix.lower()
+            if suffix not in self._IMAGE_EXTENSIONS:
+                suffix = ".png"
+            destination = (target / f"icon{suffix}").resolve()
             if Path(self.icon_path).resolve() != destination:
                 shutil.copy(self.icon_path, destination)
         if self.banner_path and os.path.isfile(self.banner_path):
-            destination = (target / "banner.png").resolve()
+            suffix = Path(self.banner_path).suffix.lower()
+            if suffix not in self._IMAGE_EXTENSIONS:
+                suffix = ".png"
+            destination = (target / f"banner{suffix}").resolve()
             if Path(self.banner_path).resolve() != destination:
                 shutil.copy(self.banner_path, destination)
 
@@ -449,8 +485,8 @@ class ModEditorDialog(QDialog):
             "entry_asset": self.entry_asset_input.text().strip(),
             "tags": [t.strip() for t in self.tags_input.text().split(",") if t.strip()],
             "repo": self.selected_repo(),
-            "icon_path": "icon.png" if (target / "icon.png").is_file() else "",
-            "banner_path": "banner.png" if (target / "banner.png").is_file() else "",
+            "icon_path": self._find_saved_image(target, "icon") or "",
+            "banner_path": self._find_saved_image(target, "banner") or "",
             "mod_files_dir": self.mod_files_dir,
         }
         write_mod_meta(target, meta)

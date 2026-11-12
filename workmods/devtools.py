@@ -179,9 +179,9 @@ def validate_mod(folder: str | Path, *, compatibility: Any = None) -> Validation
     ]
     if not content:
         result.errors.append("the folder has no mod files")
-    if not (folder / "icon.png").is_file() and not (folder / "icon.jpg").is_file():
+    if not any((folder / f"icon{ext}").is_file() for ext in (".png", ".jpg", ".jpeg", ".gif", ".ico")):
         result.warnings.append("no icon.png (optional, but the catalog looks better with one)")
-    if not (folder / "banner.png").is_file() and not (folder / "banner.jpg").is_file():
+    if not any((folder / f"banner{ext}").is_file() for ext in (".png", ".jpg", ".jpeg", ".gif", ".ico")):
         result.warnings.append("no banner.png (optional)")
     if not str(manifest.get("entry_asset") or "").strip():
         result.warnings.append("no entry_asset; players must pick the asset themselves")

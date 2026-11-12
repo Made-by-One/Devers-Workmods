@@ -34,6 +34,17 @@ def _has_file(path: str | Path | None) -> bool:
     return bool(path) and Path(path).is_file()
 
 
+_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".ico"}
+
+
+def _image_filename(path: str | Path | None, kind: str) -> str:
+    """Return the repository filename for an icon or banner source."""
+    suffix = Path(path).suffix.lower() if path else ""
+    if suffix not in _IMAGE_EXTENSIONS:
+        suffix = ".png"
+    return f"{kind}{suffix}"
+
+
 def submission_path(game_id: str, mod_id: str) -> str:
     """Repository path of a mod's submission file."""
     return f"{SUBMISSIONS_DIR}/{normalize_game_id(game_id)}/{mod_id}.json"
@@ -188,7 +199,7 @@ class ModPublisher:
             if source and Path(source).is_file():
                 self.client.put_file(
                     request.repo,
-                    f"{kind}.png",
+                    _image_filename(source, kind),
                     Path(source).read_bytes(),
                     f"Update {kind} for {request.name}",
                 )
@@ -214,8 +225,14 @@ class ModPublisher:
             "entry_asset": request.entry_asset,
             "tags": list(request.tags),
             "updated_at": now_iso(),
-            "icon_url": f"{raw}/icon.png" if _has_file(request.icon_path) else "",
-            "banner_url": f"{raw}/banner.png" if _has_file(request.banner_path) else "",
+            "icon_url": (
+                f"{raw}/{_image_filename(request.icon_path, 'icon')}"
+                if _has_file(request.icon_path) else ""
+            ),
+            "banner_url": (
+                f"{raw}/{_image_filename(request.banner_path, 'banner')}"
+                if _has_file(request.banner_path) else ""
+            ),
         }
         return payload
 

@@ -362,9 +362,15 @@ class CatalogTab(QWidget):
             if current is None or current.id != mod.id:
                 return  # selection changed while the image was downloading
             if loaded_tag == "banner":
-                self.banner_label.set_cover(scale_pixmap(data, 720, 200))
+                if data.startswith(b"GIF8"):
+                    self.banner_label.set_movie(data)
+                else:
+                    self.banner_label.set_cover(scale_pixmap(data, 720, 200))
             else:
-                self.icon_label.set_cover(scale_pixmap(data, 72, 72))
+                if data.startswith(b"GIF8"):
+                    self.icon_label.set_movie(data)
+                else:
+                    self.icon_label.set_cover(scale_pixmap(data, 72, 72))
 
         def on_done() -> None:
             if worker in self._image_workers:
