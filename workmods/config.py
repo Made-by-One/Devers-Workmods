@@ -18,7 +18,7 @@ from typing import Any, Iterator
 from workmods.models import DEFAULT_GAME_ID, UNASSIGNED_GAME_NAME, Game, normalize_game_id
 
 APP_NAME = "Workmods"
-APP_VERSION = "1.1c"
+APP_VERSION = "1.1d"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("WORKMODS_DATA_DIR", PROJECT_ROOT / "data"))

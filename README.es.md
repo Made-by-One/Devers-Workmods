@@ -4,7 +4,7 @@
 
 **Idiomas:** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · Español · [Français](README.fr.md) · [中文](README.zh.md)
 
-**Estado:** `v1.1c` — beta pública con el cliente rediseñado. [Descargar la última beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c) o consultar las [limitaciones conocidas](#limitaciones) antes de usarlo en un juego real.
+**Estado:** `v1.1d` — beta pública con el cliente rediseñado. [Descargar la última beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1d) o consultar las [limitaciones conocidas](#limitaciones) antes de usarlo en un juego real.
 
 Workmods son tres piezas que comparten un mismo formato:
 
@@ -33,7 +33,7 @@ Cliente Workmods ── ZIP + Release ──► repositorio del mod
 
 ## Descargar
 
-Las compilaciones se publican en [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1c):
+Las compilaciones se publican en [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.1d):
 
 | Sistema | Archivo |
 |---|---|
@@ -43,11 +43,12 @@ Las compilaciones se publican en [GitHub Releases](https://github.com/Made-by-On
 
 Descomprime el archivo y ejecuta `Workmods.exe`, `Workmods` o `Workmods.app`. Python y PyQt6 están incluidos. La compilación de macOS no está firmada: en el primer inicio usa **Clic derecho → Abrir**. Windows SmartScreen puede mostrar una advertencia similar.
 
-### Novedades de 1.1c
+### Novedades de 1.1d
 
 - **Ajustes → Actualizaciones**: comprueba GitHub Releases, verifica `SHA256SUMS` y la firma opcional, instala de forma atómica y revierte si falla.
 - **Instalados → Perfil de mods**: conjuntos activados/desactivados, presets de ajustes, aplicación mediante `.workmods-disabled`, exportación e importación JSON.
 - Los releases incluyen `SHA256SUMS` y, si el secreto de firma está configurado, `SHA256SUMS.sig`. Ver [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
+- Las compilaciones de Linux usan Ubuntu 22.04, por lo que funcionan en Ubuntu 24.04 y sistemas con glibc 2.35+.
 
 ---
 

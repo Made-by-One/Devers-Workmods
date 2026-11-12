@@ -55,7 +55,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             artifact: linux-x86_64
             package: linux
           - os: windows-latest
@@ -209,8 +209,9 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Workmods ${{ needs.prepare.outputs.version }} — public beta
           body: |
-            Third public beta of Workmods. This release connects updates and mod
-            profiles to the desktop GUI and adds signed release checksums.
+            Fourth public beta of Workmods. Connects updates and mod profiles to
+            the desktop GUI, adds signed release checksums and fixes the Linux
+            artifact’s glibc compatibility.
 
             **Highlights**
             - Settings → Application Updates: check, verify, install and roll back.
@@ -221,6 +222,8 @@ jobs:
             - `validate-package` checks engine, Unity version, platform, client and
               SDK compatibility declared in `workmod.json`.
             - Unity SDK example and smoke suite remain included.
+            - Linux builds now use Ubuntu 22.04 so the binary starts on Ubuntu 24.04
+              (the 1.1c artifact required GLIBC_2.43).
 
             **Downloads**
             - Windows x64: `Workmods-windows-x86_64.zip`
@@ -237,7 +240,7 @@ jobs:
 
             See the [README](https://github.com/Made-by-One/Devers-Workmods#readme) and
             [CHANGELOG](https://github.com/Made-by-One/Devers-Workmods/blob/main/CHANGELOG.md)
-            for the full 1.1c notes.
+            for the full 1.1d notes.
           files: release-assets/*
           prerelease: true
           fail_on_unmatched_files: true

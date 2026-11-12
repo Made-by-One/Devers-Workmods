@@ -3,6 +3,17 @@
 All notable changes to Workmods. The format follows Keep a Changelog and the
 project uses semantic versioning.
 
+## [1.1d] — 2026-11-12
+
+Maintenance beta for the Linux artifact.
+
+### Fixed
+
+- Linux release builds now run on `ubuntu-22.04` instead of `ubuntu-latest`, so
+  the bundled glib/GTK libraries do not require a newer glibc than Ubuntu 24.04
+  provides. The previous 1.1c Linux binary failed to start on Ubuntu 24.04 with
+  `GLIBC_2.43 not found`; this build was verified after the change.
+
 ## [1.1c] — 2026-11-12
 
 Third public beta. Connects the new profile and update features to the desktop
