@@ -3,6 +3,30 @@
 All notable changes to Workmods. The format follows Keep a Changelog and the
 project uses semantic versioning.
 
+## [Unreleased]
+
+### Changed
+
+- **Publishing is now a pull request**, not a `repository_dispatch`. The registry
+  is generated from `submissions/<game_id>/<mod_id>.json`; the client forks the
+  registry when needed, opens a pull request and shows its URL, so no write access
+  to the registry and no shared secret are required to publish a mod.
+- Registry CI is split into **Validate Submission** (pull requests, read-only) and
+  **Rebuild Mod Registry** (push to `main`, rebuilds `registry.json`).
+- `BOT_SECRET` / `WORKMODS_BOT_SECRET` were removed from the client and the bot.
+
+### Added
+
+- Submission validator: path/id/game consistency, SHA-256 format, GitHub release
+  URLs, tags, unknown-field rejection and duplicate-id detection.
+- Removal through a pull request that deletes the submission file.
+- `submissions/README.md`; updated schema, publishing, security and architecture
+  docs; 13 new tests (47 total).
+
+### Fixed
+
+- `ruff` is now listed in `requirements-dev.txt`, so the CI lint step can run.
+
 ## [1.0a] — 2026-11-10
 
 First public alpha. Feature-freeze release for the v1.0 line: the client, the

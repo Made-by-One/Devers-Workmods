@@ -14,7 +14,7 @@ from pathlib import Path
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from workmods.github_api import GitHubClient
-from workmods.models import Mod
+from workmods.models import DEFAULT_GAME_ID, Mod
 from workmods.publisher import ModPublisher, PublishRequest, PublishResult
 from workmods.storage import download_file, install_package, sha256_file
 
@@ -96,21 +96,29 @@ class PublishWorker(QThread):
 
 
 class UnpublishWorker(QThread):
-    succeeded = pyqtSignal()
+    succeeded = pyqtSignal(str)  # pull request URL
     failed = pyqtSignal(str)
 
-    def __init__(self, token: str, mod_id: str, registry_repo: str | None = None, parent=None):
+    def __init__(
+        self,
+        token: str,
+        mod_id: str,
+        game_id: str = DEFAULT_GAME_ID,
+        registry_repo: str | None = None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.token = token
         self.mod_id = mod_id
+        self.game_id = game_id
         self.registry_repo = registry_repo
 
     def run(self) -> None:
         try:
             publisher = ModPublisher(GitHubClient(self.token))
             kwargs = {"registry_repo": self.registry_repo} if self.registry_repo else {}
-            publisher.unpublish(self.mod_id, **kwargs)
-            self.succeeded.emit()
+            pr_url = publisher.unpublish(self.mod_id, game_id=self.game_id, **kwargs)
+            self.succeeded.emit(pr_url)
         except Exception as exc:
             self.failed.emit(str(exc))
 

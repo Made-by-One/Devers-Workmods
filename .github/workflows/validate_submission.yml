@@ -1,0 +1,32 @@
+name: Validate Submission
+
+on:
+  pull_request:
+    paths:
+      - "submissions/**"
+      - ".github/scripts/update_registry.py"
+      - ".github/workflows/validate_submission.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate submission files
+        run: python .github/scripts/update_registry.py validate
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Submission validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "Every file under \`submissions/\` must match the schema in docs/REGISTRY_SCHEMA.md." >> "$GITHUB_STEP_SUMMARY"

@@ -42,9 +42,6 @@ GITHUB_CLIENT_ID = os.environ.get("WORKMODS_GITHUB_CLIENT_ID", "Ov23liTU4bp8UkRw
 GITHUB_CLIENT_SECRET = os.environ.get(
     "WORKMODS_GITHUB_CLIENT_SECRET", "876493fead76f7880f20e51c7dc072832e4980e2"
 )
-# Shared secret that authenticates registry update dispatches.
-BOT_SECRET = os.environ.get("WORKMODS_BOT_SECRET", "super_secret_workmods_2026")
-
 OAUTH_CALLBACK_PORT = int(os.environ.get("WORKMODS_OAUTH_PORT", "8080"))
 OAUTH_SCOPE = "repo"
 
@@ -211,7 +208,7 @@ class WorkmodsConfig:
 
 
 __all__ = [
-    "APP_NAME", "APP_VERSION", "BOT_SECRET", "CONFIG_DIR", "CONFIG_FILE",
+    "APP_NAME", "APP_VERSION", "CONFIG_DIR", "CONFIG_FILE",
     "DATA_DIR", "DEFAULT_REGISTRY_URL", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET",
     "OAUTH_CALLBACK_PORT", "OAUTH_SCOPE", "PROJECT_ROOT", "REGISTRY_BRANCH",
     "REGISTRY_REPO", "WorkmodsConfig", "default_mods_dir",

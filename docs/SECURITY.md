@@ -9,54 +9,55 @@ release checklist.
 | Secret | Where it is used | Status |
 |---|---|---|
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | OAuth token exchange in the desktop client | Default value is committed in `workmods/config.py` |
-| `BOT_SECRET` | Authenticates `add_mod` / `remove_mod` dispatches | Default value is committed in `workmods/config.py` |
-| `BOT_SECRET_TOKEN` | GitHub Actions secret compared by the workflow | Repository secret |
 
 A desktop application cannot keep an OAuth **client secret** confidential: anyone
-can extract it from the binary or source. GitHub's OAuth flow for public clients
-is still safe enough for a user-facing app *only* when the secret is treated as
-public and the app has no privileged backend. The registry bot secret has the same
-property.
+can extract it from the binary or source. GitHub's device/browser flow for public
+clients is still safe enough for a user-facing app *only* when the secret is
+treated as public and there is no privileged backend behind it.
 
-### Required before a public v1.0 release
+There is **no shared registry secret** anymore. Publishing works through a pull
+request from the author's fork, so the registry never has to accept an
+authenticated write from an anonymous client.
 
-1. **Rotate both defaults.**
-   - GitHub → Settings → Developer settings → OAuth Apps → your app → generate a
-     new client secret; set the callback URL to `http://localhost:8080`.
-   - Update the repository secret `BOT_SECRET_TOKEN` (Settings → Secrets and
-     variables → Actions) and the value the client sends.
-2. **Do not bake new secrets into the source.** Provide them through the
-   environment:
-   - `WORKMODS_GITHUB_CLIENT_ID`
-   - `WORKMODS_GITHUB_CLIENT_SECRET`
-   - `WORKMODS_BOT_SECRET`
-   - `WORKMODS_REGISTRY_REPO` / `WORKMODS_REGISTRY_BRANCH`
-3. Understand that the bot secret is **defence in depth, not access control**.
-   The real gate for `repository_dispatch` is GitHub's permission model: the
-   caller must have write access to the registry repository. Anybody who can
-   publish already has that access; the shared secret only prevents accidental or
-   naive writes (and produces a clear failure in the Action log).
+### Required before a public release
+
+1. **Rotate the OAuth client secret.** GitHub → Settings → Developer settings →
+   OAuth Apps → your app → generate a new client secret; keep the callback URL at
+   `http://localhost:8080`.
+2. **Do not bake new values into the source.** Provide them through the
+   environment: `WORKMODS_GITHUB_CLIENT_ID`, `WORKMODS_GITHUB_CLIENT_SECRET`,
+   `WORKMODS_REGISTRY_REPO`, `WORKMODS_REGISTRY_BRANCH`.
+3. Keep branch protection on `main` with the **Validate Submission** check
+   required, so no submission reaches the registry without validation.
 
 ## Publishing model and access control
 
 ```
-modder's token ──► POST /repos/<registry>/dispatches  ──► GitHub requires write access
+publisher (fork) ──push branch──► pull request ──► Validate Submission (read-only)
+                                        │
+                                        ▼
+                             maintainer review + merge
+                                        │
+                                        ▼
+                        Rebuild Mod Registry (GITHUB_TOKEN, contents: write)
 ```
 
 Consequences:
 
-- **Curated workshop (current):** add trusted modders as collaborators on the
-  registry repository. The secret is redundant but harmless.
-- **Open workshop (not implemented):** a client cannot hold a token with write
-  access to a shared registry. Options for the next version:
-  1. publish through pull requests from the modder's fork, with the Action
-     validating and merging (no secret in the client);
-  2. a small GitHub App / serverless proxy that holds a scoped installation token
-     and authenticates users via their GitHub identity;
-  3. one registry repository per game, owned by that game's developer.
-
-  Until then, document the collaborator requirement clearly instead of pretending
-  open publishing works.
+- **No registry credentials reach the client.** The author's token is used only
+  on repositories they own plus their own fork; the fork is created by GitHub
+  under their account.
+- **Review is the gate.** CI checks structure, not intent. A malicious mod can
+  still have a valid schema, a valid hash and a working download URL. A maintainer
+  must look at the repository and the release before merging.
+- **Merge rights are the access control.** Only maintainers can merge, so the
+  registry cannot be modified by a submission alone.
+- **Identity.** The submission records `submitted_by` from the authenticated
+  GitHub login, and the pull request shows the fork owner. That is a weak identity
+  claim, good enough for moderation, not for ownership disputes.
+- **Mod id squatting.** Ids are global and lower-case. If two people submit the
+  same `<game>/<id>.json`, the second pull request conflicts; the maintainer
+  decides. There is no cryptographic proof that the id belongs to a repository.
 
 ## Token at rest
 
@@ -78,15 +79,18 @@ Consequences:
 - Games should treat mods as untrusted input, prefer AssetBundles over DLLs, and
   never run mod code with more privilege than the game itself has.
 
-## GitHub Action
+## GitHub Actions
 
-- `update_registry.py` compares the secret with `hmac.compare_digest`.
-- Payload fields are whitelisted; `secret` is dropped before writing
-  `registry.json`, so the public registry cannot leak it.
-- A wrong/missing secret fails the job (exit 1) instead of silently succeeding.
-- `concurrency` serialises updates; only `registry.json` is staged.
-- The workflow uses the default `GITHUB_TOKEN` with `contents: write`, no
-  personal token.
+- `validate_submission.yml` runs on `pull_request` with `contents: read` only. It
+  never checks out a privileged token and never executes submission content —
+  submission files are parsed as data.
+- `rebuild_registry.yml` runs on `push` to `main` (and manual dispatch) with
+  `contents: write`, uses the default `GITHUB_TOKEN`, serialises runs with
+  `concurrency`, and stages only `registry.json`.
+- The bot rejects unknown fields, so a submission file cannot smuggle extra data
+  (or a leaked secret) into the public registry.
+- Pull requests are never auto-merged. Validation failing is a hard error, not a
+  warning.
 
 ## Reporting
 

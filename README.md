@@ -17,8 +17,8 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 ┌──────────────────┐    publish (ZIP + release)    ┌─────────────────────────┐
 │  Workmods client │ ────────────────────────────► │ modder's GitHub repo    │
 │  (PyQt6)         │                               │ + GitHub Release        │
-│                  │ ── repository_dispatch ─────► │  registry repo          │
-└────────┬─────────┘                               │  (GitHub Action)        │
+│                  │ ── pull request ────────────► │  registry repo          │
+└────────┬─────────┘                               │  submissions/ + Action  │
          │ reads registry.json                      └───────────┬─────────────┘
          │                                                       │ commits
          ▼                                                       ▼
@@ -32,7 +32,7 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 └──────────────────┘
 ```
 
-**Кратко по-русски:** Workmods — независимый аналог Steam Workshop для любых Unity-игр. Клиент на PyQt6 публикует моды в GitHub Releases и обновляет общий `registry.json` через GitHub Action. Игра подключает один C#-файл `WorkmodsSDK.cs`, сканирует папку модов и загружает AssetBundle'ы. У каждого мода есть `game_id`, поэтому один клиент обслуживает несколько игр. Подробности — в [docs/](docs/).
+**Кратко по-русски:** Workmods — независимый аналог Steam Workshop для любых Unity-игр. Клиент на PyQt6 публикует моды в GitHub Releases и предлагает запись в общем реестре через pull request; `registry.json` пересобирает GitHub Action после merge. Игра подключает один C#-файл `WorkmodsSDK.cs`, сканирует папку модов и загружает AssetBundle'ы. У каждого мода есть `game_id`, поэтому один клиент обслуживает несколько игр. Подробности — в [docs/](docs/).
 
 ---
 
@@ -48,7 +48,7 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 │   ├── registry.py             # registry parsing, migration, filtering
 │   ├── storage.py              # ZIP packaging, SHA-256, safe install, scanning
 │   ├── github_api.py           # thin GitHub REST client
-│   ├── publisher.py            # zip → repo → release → registry dispatch
+│   ├── publisher.py            # zip → repo → release → submission pull request
 │   ├── oauth.py                # GitHub OAuth callback server
 │   ├── net.py                  # Qt network adapter for the registry
 │   ├── i18n.py                 # localization
@@ -64,8 +64,9 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 │   └── README.md
 ├── data/                       # icons + localization (en, ru)
 ├── docs/                       # architecture, schema, guides
-├── tests/                      # pytest suite (34 tests)
-├── registry.json               # the shared catalog
+├── submissions/                # one JSON file per mod (source of truth)
+├── tests/                      # pytest suite (47 tests)
+├── registry.json               # generated shared catalog
 └── .github/
     ├── scripts/update_registry.py
     └── workflows/update_registry.yml
@@ -119,12 +120,14 @@ You need a GitHub account. Workmods creates and fills a repository for you — y
 5. **Publish & Request Addition.** The client:
    - packages the folder into a ZIP and computes SHA-256,
    - uploads files + release asset to your repo (`v<version>` tag),
-   - dispatches `add_mod` to the registry repository,
-   - the Action validates the shared secret, strips it, writes the entry and commits `registry.json`.
+   - opens a pull request adding `submissions/<game_id>/<mod_id>.json` to the registry repository.
 
-Players see the mod after the Action finishes (a few seconds).
+No write access to the registry is needed — the pull request comes from your fork.
+CI validates the submission file, a maintainer reviews it, and the merge triggers
+the **Rebuild Mod Registry** Action. Players see the mod after the next catalog
+refresh.
 
-**Updating:** bump the version, publish again — the same `modId` is replaced in the registry and the app offers the new release. **Unpublishing** removes only the registry entry; your repository and releases stay online.
+**Updating:** bump the version, publish again — the new pull request replaces the same `modId` submission file, so players see one entry. **Unpublishing** opens a pull request that deletes the submission file; your repository and releases stay online.
 
 Full walkthrough, troubleshooting and versioning rules: [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
@@ -204,7 +207,7 @@ The SDK logs every discovered mod, loaded bundle, asset and failure (`WorkmodsLo
 }
 ```
 
-Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: those mods belong to the `default` profile and remain visible under **All games**. Full field reference and dispatch contract: [docs/REGISTRY_SCHEMA.md](docs/REGISTRY_SCHEMA.md).
+Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: those mods belong to the `default` profile and remain visible under **All games**. Full field reference, submission format and review flow: [docs/REGISTRY_SCHEMA.md](docs/REGISTRY_SCHEMA.md).
 
 ---
 
@@ -212,11 +215,11 @@ Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: 
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 34 tests, no display required
+pytest              # 47 tests, no display required
 ruff check workmods tests
 ```
 
-The test suite covers registry migration/filtering, config migration and game profiles, ZIP packaging, path-traversal rejection, atomic installs, publish orchestration against a fake GitHub client, and the registry-update bot.
+The test suite covers registry migration/filtering, config migration and game profiles, ZIP packaging, path-traversal rejection, atomic installs, publish orchestration against a fake GitHub client, and the submission validator/registry rebuild bot.
 
 Build the Unity SDK check (optional): compile `unity-sdk/WorkmodsSDK.cs` together with Unity API stubs; it has no Unity-only syntax beyond the documented APIs. It was verified with C# 7.3 in both Mono and `ENABLE_IL2CPP` configurations.
 
@@ -224,11 +227,9 @@ Build the Unity SDK check (optional): compile `unity-sdk/WorkmodsSDK.cs` togethe
 
 These are deliberate v1.0 boundaries, not bugs to discover later:
 
-1. **Publishing requires write access to the registry repository.** GitHub only
-   accepts `repository_dispatch` from users with write access, so external
-   modders must be collaborators on a curated workshop. True open publishing
-   needs a proxy/GitHub App or a fork-and-PR flow (planned for v1.1); the shared
-   secret shipped in the client is not an access-control mechanism.
+1. **Publishing is PR-based and manual.** Anybody can open a submission pull
+   request without registry access, but a maintainer still has to review and
+   merge it; there is no automated malware scanning or trust score yet.
 2. **No automatic update notifications.** Installing again replaces the folder;
    there is no "update available" diff, dependency graph or load order between
    mods.
@@ -242,7 +243,7 @@ These are deliberate v1.0 boundaries, not bugs to discover later:
 ## Security
 
 - Mods are executable content: the client verifies SHA-256, but games should still treat mods as untrusted.
-- OAuth and registry secrets are read from the environment when present (`WORKMODS_GITHUB_CLIENT_SECRET`, `WORKMODS_BOT_SECRET`). See [docs/SECURITY.md](docs/SECURITY.md) — **rotate the built-in defaults before shipping publicly**.
+- The OAuth client secret is read from the environment when present (`WORKMODS_GITHUB_CLIENT_SECRET`); nothing else is shared between publishers and the registry. See [docs/SECURITY.md](docs/SECURITY.md) — **rotate the built-in default before shipping publicly**.
 - GitHub tokens are stored in `~/.devers_workmods/config.json` (user-only permissions, plain text). Do not share the file.
 
 ## License

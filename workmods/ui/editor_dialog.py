@@ -347,10 +347,12 @@ class ModEditorDialog(QDialog):
         QMessageBox.information(
             self,
             "Success",
-            "Mod published.\n\n"
+            "Mod published to your repository.\n\n"
             f"Release: {result.release_url or result.download_url}\n"
+            f"Registry pull request: {result.pr_url or '(not created)'}\n"
             f"SHA-256: {result.sha256}\n\n"
-            "The registry is updated by the GitHub Action in a few seconds.",
+            "A maintainer reviews the submission; once the pull request is merged "
+            "the registry rebuilds automatically and the mod appears in the catalog.",
         )
 
     def _on_publish_failed(self, error: str, dialog: UploadDialog) -> None:
@@ -363,13 +365,19 @@ class ModEditorDialog(QDialog):
         answer = QMessageBox.question(
             self,
             "Unpublish",
-            "Remove this mod from the registry? The GitHub repository and release stay online.",
+            "Open a pull request that removes this mod from the shared registry?\n\n"
+            "Your GitHub repository, files and release stay online.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
 
-        worker = UnpublishWorker(self.config.github_token, self.mod.id, parent=self)
+        worker = UnpublishWorker(
+            self.config.github_token,
+            self.mod.id,
+            self.selected_game_id(),
+            parent=self,
+        )
         self._unpublish_worker = worker
         worker.succeeded.connect(self._on_unpublished)
         worker.failed.connect(lambda error: QMessageBox.critical(self, "Error", error))
@@ -381,11 +389,17 @@ class ModEditorDialog(QDialog):
             self._unpublish_worker = None
         worker.deleteLater()
 
-    def _on_unpublished(self) -> None:
+    def _on_unpublished(self, pr_url: str = "") -> None:
         self.is_published = False
         self.btn_unpublish.setVisible(False)
         self.published.emit(self.mod.id)
-        QMessageBox.information(self, "Success", "Mod removed from the registry.")
+        QMessageBox.information(
+            self,
+            "Removal requested",
+            "Removal pull request created:\n"
+            f"{pr_url or '(see the registry repository)'}\n\n"
+            "The mod disappears from the catalog after a maintainer merges it.",
+        )
 
 
 __all__ = ["ModEditorDialog"]

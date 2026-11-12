@@ -55,16 +55,23 @@ AuthorStudioTab ──ModEditorDialog──► PublishRequest
  (ZIP without metadata)                                         ├ put_file ×N
                                                                 ├ ensure_release
                                                                 ├ upload_release_asset
-                                                                └ dispatch(add_mod)
+                                                                ├ ensure_fork (if needed)
+                                                                ├ ensure_branch
+                                                                ├ put_file(submissions/…)
+                                                                └ create_pull
                                                                         │
-                                                          update_registry.py (Action)
+                                             validate_submission.yml (on PR)
+                                                                        │
+                                             maintainer review + merge
+                                                                        │
+                                             rebuild_registry.yml (on push)
                                                                         │
                                                               registry.json commit
 ```
 
-`PublishResult` contains the registry payload *without* the shared secret, the
-SHA-256 and the release URL. The secret is only ever sent to the dispatch
-endpoint; the Action verifies it in constant time and strips it before writing.
+`PublishResult` carries the submission payload, the SHA-256, the release URL and
+the pull request URL. Nothing secret is exchanged: the submission file is plain
+registry metadata, and the pull request itself is the access request.
 
 ## Data flow: installing a mod
 
@@ -133,7 +140,7 @@ No UI code touches files or the network directly.
   is reserved for that (`"unity"`, `"godot"`, …).
 - **Another hosting backend:** implement the small surface used by
   `ModPublisher` (`put_file`, `ensure_release`, `upload_release_asset`,
-  `dispatch`) and swap it in.
+  `ensure_fork`, `ensure_branch`, `create_pull`) and swap it in.
 - **Headless publishing:** reuse `ModPublisher` + `PublishRequest` from a script.
 
 ## Tests
@@ -145,8 +152,8 @@ No UI code touches files or the network directly.
 | `test_registry.py` | v1 migration, game/search filtering, legacy visibility |
 | `test_config.py` | legacy config migration, per-game dirs, profile lifecycle |
 | `test_storage.py` | packaging filters, zip-slip, wrapper unwrap, atomic install, deletion guards |
-| `test_publisher.py` | release + dispatch sequence, secret handling, default branch URLs |
-| `test_registry_workflow.py` | the Action bot: auth, whitelisting, sorting, no secret leaks |
+| `test_publisher.py` | release + submission PR sequence, fork vs maintainer, default branch URLs, removal PRs |
+| `test_registry_workflow.py` | submission validation (paths, ids, URLs, hashes) and `registry.json` rebuild |
 
 The UI was additionally smoke-tested offscreen (window construction, game
 filtering, install from a local HTTP server, draft relocation, dialogs).

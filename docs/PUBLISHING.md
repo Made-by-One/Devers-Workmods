@@ -1,13 +1,11 @@
 # Publishing a mod
 
 This is the modder's manual. You need a GitHub account; you do **not** need git,
-a terminal or a server.
+a terminal, write access to the registry or a server.
 
-> **Access requirement:** publishing sends a `repository_dispatch` to the registry
-> repository, and GitHub only accepts that from a user with **write access** to
-> that repository. On a self-hosted registry add publishers as collaborators (or
-> let them publish through your fork/PR flow). See
-> [Known limitations](../README.md#known-limitations-before-public-launch).
+Publishing is a pull request: the client uploads your mod to your own repository,
+then proposes one small JSON file to the shared registry. A maintainer merges it,
+and a GitHub Action rebuilds `registry.json` from all submission files.
 
 ## 1. Prepare the mod
 
@@ -85,11 +83,25 @@ Click **Publish & Request Addition**. Workmods then:
 2. computes SHA-256;
 3. uploads every file to the repository (default branch) and the icon/banner;
 4. creates/uses release `v<version>` and uploads `<modId>.zip`;
-5. dispatches `add_mod` to the registry repository.
+5. opens a pull request adding `submissions/<game_id>/<mod_id>.json`.
 
-The GitHub Action validates the shared secret, writes/updates the entry in
-`registry.json` and commits it. The catalog refresh may take a minute because
-`raw.githubusercontent.com` is CDN-cached — press **Refresh** again a bit later.
+The pull request comes from your fork (or straight from the registry repository if
+you are a maintainer), so **you do not need any special access**. It contains the
+metadata, download URL, SHA-256 and your GitHub login; its description repeats the
+same facts for the reviewer.
+
+What happens next:
+
+1. **Validate Submission** runs on the pull request. It checks the path, id,
+   version, SHA-256 format and that the download URL is a GitHub release asset.
+2. A maintainer reviews the repository and the release, then merges.
+3. **Rebuild Mod Registry** regenerates `registry.json` from every submission file
+   and commits it.
+4. Players see the mod after the next catalog refresh; `raw.githubusercontent.com`
+   is CDN-cached, so press **Refresh** again a bit later.
+
+If validation fails, the pull request shows the exact field and file. Fix the
+metadata in the editor and publish again.
 
 ### Versioning
 
@@ -101,32 +113,37 @@ The GitHub Action validates the shared secret, writes/updates the entry in
 
 ### Updating
 
-Open the mod → **Edit** → bump the version → **Publish**. The registry entry is
-replaced by id, so players see one entry, not two.
+Open the mod → **Edit** → bump the version → **Publish**. The new pull request
+updates the same `submissions/<game_id>/<mod_id>.json` file, so players see one
+entry, not two. If your previous pull request is still open, close it first: both
+branches modify the same file.
 
 ## 5. Unpublish
 
-**Unpublish** removes the entry from `registry.json`. Your repository, files and
-releases stay online — existing players keep their local copy. Re-publish to
-restore it.
+**Unpublish** opens a pull request that deletes the submission file. Your
+repository, files and releases stay online — existing players keep their local
+copy. After a maintainer merges it, the mod disappears from the catalog.
 
 ## Limits and failure modes
 
 | Symptom | Meaning | Fix |
 |---|---|---|
 | `GitHub API 401` | Token missing/expired | Log out and log in again. |
-| `GitHub API 403` | Token lacks write access to the target repo, or a rate limit | Re-login; check repository permissions. |
+| `GitHub API 403` | Token lacks access to your target repo, or a rate limit | Re-login; check repository permissions. |
 | `GitHub API 404` | Repository not found or no access | Pick another repository in the editor. |
 | `GitHub API 422` | Release/tag rejected, or a file too large | Use a new version; see the size limit below. |
-| `Registry rejected: 404` | Your account has no write access to the registry repository | Ask the registry owner for access (required for `repository_dispatch`). |
-| Registry entry never appears | The Action failed | Open the registry repository → **Actions** → *Update Mod Registry* and read the log. |
+| Fork creation times out | GitHub is still copying the registry repository | Wait a minute and publish again; the fork is reused. |
+| Validation failed: `file name must be …` | The submission path and mod id disagree | Do not hand-edit the file; re-publish from the client. |
+| Validation failed: `download_url` | The release asset URL is not a GitHub URL | Publish through the client instead of editing JSON. |
+| Pull request conflicts | Another open PR changes the same mod file | Close the older PR, then re-publish. |
+| Mod never appears after merge | The rebuild Action failed | Open the registry repository → **Actions** → *Rebuild Mod Registry* and read the log. |
 | `Checksum mismatch` for players | The uploaded asset changed after publishing (e.g. release asset replaced manually) | Publish again so the SHA-256 matches. |
 
 **File size:** the client uploads mod files through the GitHub Contents API, which
 is unsuitable for very large files (GitHub rejects files over 100 MB, and the API
 is not a CDN). Keep individual files well below that; the release ZIP itself can
-be up to 2 GB. For huge content, publish the release manually and open a PR that
-adds the registry entry.
+be up to 2 GB. For huge content, publish the release manually and open a pull
+request that adds the submission file.
 
 **Repository contents:** every published file is committed to the mod repository,
 so players and the game developer can inspect what a mod ships. That is

@@ -1,9 +1,10 @@
 # Registry schema (v2)
 
-`registry.json` is the shared catalog. It is written **only** by
-`.github/workflows/update_registry.yml` → `.github/scripts/update_registry.py`.
-Clients read it from `raw.githubusercontent.com`, so changes are visible without
-a release.
+`registry.json` is the shared catalog. It is **generated**: the source of truth is
+one JSON file per mod in `submissions/`, and `.github/workflows/rebuild_registry.yml`
+→ `.github/scripts/update_registry.py` rewrites `registry.json` after every merge to
+`main`. Clients read it from `raw.githubusercontent.com`, so changes are visible
+without a release. Do not edit `registry.json` by hand — it will be overwritten.
 
 ## Document
 
@@ -86,56 +87,78 @@ Readers handle this:
   under **All games**;
 - the bot rewrites the file as v2 on its next run.
 
-## Dispatch contract
+## Submission contract
 
-The client sends `repository_dispatch` to the registry repository:
+The client does not write to the registry. It opens a pull request that adds (or
+updates) one file:
 
-```http
-POST /repos/Made-by-One/Devers-Workmods/dispatches
+```
+submissions/<game_id>/<mod_id>.json
+```
+
+```json
 {
-  "event_type": "add_mod",            // or "remove_mod"
-  "client_payload": {
-    "secret": "<shared secret>",
-    "id": "a1b2c3d4",
-    "game_id": "space-rangers",
-    "name": "Neon UI",
-    "version": "1.2.0",
-    "author": "your-handle",
-    "description": "…",
-    "repo": "you/workmods-neon-ui",
-    "download_url": "https://github.com/…/a1b2c3d4.zip",
-    "sha256": "…",
-    "entry_asset": "NeonHud",
-    "tags": ["ui"],
-    "icon_url": "…",
-    "banner_url": "…"
-  }
+  "id": "a1b2c3d4",
+  "game_id": "space-rangers",
+  "name": "Neon UI",
+  "version": "1.2.0",
+  "author": "your-handle",
+  "description": "Neon HUD replacement.",
+  "repo": "you/workmods-neon-ui",
+  "download_url": "https://github.com/you/workmods-neon-ui/releases/download/v1.2.0/a1b2c3d4.zip",
+  "sha256": "9f2c…",
+  "entry_asset": "NeonHud",
+  "tags": ["ui", "hud"],
+  "icon_url": "https://raw.githubusercontent.com/you/workmods-neon-ui/main/icon.png",
+  "banner_url": "",
+  "updated_at": "2026-11-12T00:00:00+00:00",
+  "submitted_by": "your-handle"
 }
 ```
 
-`remove_mod` only needs `{ "secret", "id" }`.
+`submitted_by` is stored only in the submission file; the bot crops it when it
+builds `registry.json`. Removing a mod means deleting its submission file in a
+pull request.
 
-The Action (`update_registry.yml`):
+### Validation (`validate_submission.yml`)
 
-1. checks out the repository and installs Python 3.12 (no third-party deps);
-2. runs `update_registry.py`, which compares the secret with `hmac.compare_digest`
-   against the `BOT_SECRET_TOKEN` repository secret — a wrong or missing secret
-   fails the job;
-3. whitelists known fields (dropping `secret`), normalises `game_id`, coerces
-   `tags`, timestamps the entry;
-4. replaces the entry by `id`, sorts the list, writes schema v2;
-5. validates the JSON, commits and pushes only when something changed.
+Runs on every pull request that touches `submissions/**`, with read-only token:
 
-Concurrency is serialised with `concurrency.group: registry-update`, so two
-publishers finishing at once cannot lose an entry.
+1. the file must be a JSON object with no unknown fields;
+2. `id` matches `[a-z0-9][a-z0-9._-]{1,63}` and equals the file name;
+3. `game_id` normalises to the parent folder name;
+4. `name`, `version` are present; version has no spaces or slashes;
+5. `sha256` is 64 lower-case hex characters;
+6. `repo` looks like `owner/name` and `download_url` is an `https://github.com/...`
+   release asset URL;
+7. `icon_url` / `banner_url` are empty or GitHub `https` URLs;
+8. `tags` is a list of at most 20 short strings;
+9. no two files share the same `id`.
+
+Every problem is printed with its file path; the job fails, so the pull request
+cannot merge while invalid.
+
+### Rebuild (`rebuild_registry.yml`)
+
+Runs on `push` to `main` and on manual dispatch:
+
+1. checks out the repository, installs Python 3.12 (no third-party deps);
+2. runs `update_registry.py rebuild`, which validates every submission file,
+   whitelists known fields, normalises `game_id`, sorts entries and writes schema
+   v2 with a fresh `updated_at`;
+3. validates the JSON, then commits and pushes only `registry.json`;
+4. `concurrency.group: registry-rebuild` serialises runs.
 
 ## Rules the bot enforces
 
-- Unknown events (`delete_everything`) → job fails, registry untouched.
-- `add_mod` without `id` → job fails.
-- `remove_mod` for an unknown id → succeeds as a no-op.
-- The shared secret never appears in `registry.json` (tested).
-- Re-publishing the same `id` replaces the previous entry (update semantics).
+- A submission with an invalid field, wrong path or unknown key → validation
+  fails, the pull request stays unmerged.
+- Removing a file and merging is the only way to remove a mod; the rebuild simply
+  stops listing it.
+- Re-publishing the same `id` replaces the submission file and therefore the
+  registry entry (update semantics).
+- `submitted_by` and any other non-registry metadata never reach `registry.json`
+  (tested).
 
 ## Consistency notes
 

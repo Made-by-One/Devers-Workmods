@@ -1,31 +1,47 @@
 """Publish / unpublish orchestration.
 
-One publish is five steps and four of them can fail for unrelated reasons, so the
-sequence lives here instead of inside a Qt dialog:
+One publish is several steps and four of them can fail for unrelated reasons, so
+the sequence lives here instead of inside a Qt dialog:
 
-    package -> hash -> upload files to repo -> release + asset -> registry dispatch
+    package -> hash -> upload files to the author's repo -> release + asset
+            -> pull request with a submission file for the shared registry
 
-The UI only listens to ``progress`` and shows the resulting payload.
+The registry itself is generated: ``registry.json`` is rebuilt by the registry
+bot from ``submissions/<game>/<mod>.json`` after a maintainer merges the pull
+request. Nobody needs write access to the registry repository to publish a mod.
 """
 
 from __future__ import annotations
 
+import json
+import re
 import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from workmods.config import BOT_SECRET, REGISTRY_REPO
+from workmods.config import REGISTRY_REPO
 from workmods.github_api import GitHubClient, GitHubError
 from workmods.models import DEFAULT_GAME_ID, normalize_game_id
 from workmods.storage import StorageError, now_iso, package_mod, sha256_file
 
 ProgressCallback = Callable[[int, str], None]
+SUBMISSIONS_DIR = "submissions"
 
 
 def _has_file(path: str | Path | None) -> bool:
     return bool(path) and Path(path).is_file()
+
+
+def submission_path(game_id: str, mod_id: str) -> str:
+    """Repository path of a mod's submission file."""
+    return f"{SUBMISSIONS_DIR}/{normalize_game_id(game_id)}/{mod_id}.json"
+
+
+def _slug(value: str, fallback: str = "mod") -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or "")).strip("-.")
+    return cleaned[:40] or fallback
 
 
 @dataclass
@@ -45,7 +61,6 @@ class PublishRequest:
     icon_path: str = ""
     banner_path: str = ""
     registry_repo: str = REGISTRY_REPO
-    bot_secret: str = BOT_SECRET
 
     def __post_init__(self) -> None:
         self.repo = (self.repo or "").strip().strip("/")
@@ -60,6 +75,8 @@ class PublishResult:
     sha256: str
     download_url: str
     release_url: str = ""
+    pr_url: str = ""
+    submission_path: str = ""
 
 
 class ModPublisher:
@@ -86,6 +103,8 @@ class ModPublisher:
             raise StorageError("Mod id is required.")
         if not request.version:
             raise StorageError("Version is required.")
+        if not request.registry_repo or "/" not in request.registry_repo:
+            raise StorageError("Registry repository is not configured.")
         if not Path(request.files_dir).is_dir():
             raise StorageError("Select a folder with the mod files first.")
         if len(request.version) > 64 or any(ch in request.version for ch in " /\\"):
@@ -135,15 +154,17 @@ class ModPublisher:
             )
             payload = self._build_payload(request, digest, download_url, branch)
 
-            self._report(85, "Sending to the registry...")
-            self.client.dispatch("add_mod", payload, request.registry_repo)
+            self._report(85, "Opening the registry pull request...")
+            pr_url, path = self._submit(request, payload)
 
-            self._report(100, "Published.")
+            self._report(100, "Submission pull request created.")
             return PublishResult(
-                payload={k: v for k, v in payload.items() if k != "secret"},
+                payload=payload,
                 sha256=digest,
                 download_url=download_url,
                 release_url=release_url,
+                pr_url=pr_url,
+                submission_path=path,
             )
         finally:
             if cleanup:
@@ -181,7 +202,6 @@ class ModPublisher:
     ) -> dict[str, Any]:
         raw = f"https://raw.githubusercontent.com/{request.repo}/{branch}"
         payload: dict[str, Any] = {
-            "secret": request.bot_secret,
             "id": request.mod_id,
             "game_id": request.game_id,
             "name": request.name or request.mod_id,
@@ -199,18 +219,130 @@ class ModPublisher:
         }
         return payload
 
-    def unpublish(self, mod_id: str, registry_repo: str = REGISTRY_REPO, bot_secret: str = BOT_SECRET) -> None:
+    # -- registry pull requests ---------------------------------------------
+    def _registry_target(self, registry_repo: str) -> tuple[str, str, str, str]:
+        """Resolve ``(target repo, login, base branch, base sha)``.
+
+        Maintainers commit straight to the registry; everybody else gets a fork
+        and a branch that is proposed back through a pull request.
+        """
+        registry = self.client.get_repo(registry_repo)
+        base = str(registry.get("default_branch") or "main")
+        base_sha = self.client.get_git_ref(registry_repo, base)
+        if not base_sha:
+            raise StorageError(f"Registry branch '{base}' does not exist in {registry_repo}.")
+        login = str(self.client.get_user().get("login") or "")
+        if not login:
+            raise StorageError("Could not read your GitHub login.")
+        permissions = registry.get("permissions") or {}
+        if permissions.get("push"):
+            return registry_repo, login, base, base_sha
+        fork = self.client.ensure_fork(registry_repo, login)
+        self.client.wait_for_repo(fork)
+        return fork, login, base, base_sha
+
+    def _open_pull(
+        self,
+        registry_repo: str,
+        target: str,
+        login: str,
+        base: str,
+        branch: str,
+        title: str,
+        body: str,
+    ) -> str:
+        head = f"{login}:{branch}"
+        pull = self.client.create_pull(registry_repo, title, head, base, body)
+        return str(pull.get("html_url") or "")
+
+    def _submit(self, request: PublishRequest, payload: dict[str, Any]) -> tuple[str, str]:
+        registry_repo = request.registry_repo
+        target, login, base, base_sha = self._registry_target(registry_repo)
+        path = submission_path(request.game_id, request.mod_id)
+        payload["submitted_by"] = login
+        branch = (
+            f"workmods/{_slug(request.game_id)}-{_slug(request.mod_id)}-"
+            f"v{_slug(request.version, '0')}"
+        )
+        body = (
+            f"## Publish {request.name} `{request.version}`\n\n"
+            f"- **Game:** `{request.game_id}`\n"
+            f"- **Mod id:** `{request.mod_id}`\n"
+            f"- **Repository:** `{request.repo}`\n"
+            f"- **Download:** {payload['download_url']}\n"
+            f"- **SHA-256:** `{payload['sha256']}`\n"
+            f"- **Submitted by:** @{login}\n\n"
+            f"Adds `{path}`. A maintainer reviews the metadata, and the registry is\n"
+            "rebuilt automatically once this pull request is merged.\n"
+        )
+        self.client.ensure_branch(target, branch, base_sha)
+        self.client.put_file(
+            target,
+            path,
+            _json_bytes(payload),
+            f"Submit {request.name} {request.version} ({request.game_id})",
+            branch=branch,
+        )
+        pr_url = self._open_pull(
+            registry_repo,
+            target,
+            login,
+            base,
+            branch,
+            f"Publish {request.name} {request.version} ({request.game_id})",
+            body,
+        )
+        return pr_url, path
+
+    def unpublish(
+        self,
+        mod_id: str,
+        game_id: str = DEFAULT_GAME_ID,
+        registry_repo: str = REGISTRY_REPO,
+    ) -> str:
+        """Open a pull request that removes a mod's submission file."""
         if not mod_id:
             raise StorageError("Mod id is required.")
         if not self.client.token:
             raise StorageError("Not logged in to GitHub.")
-        self._report(20, "Removing mod from the registry...")
-        self.client.dispatch(
-            "remove_mod",
-            {"secret": bot_secret, "id": mod_id},
-            registry_repo,
+        self._report(20, "Preparing the registry removal...")
+        target, login, base, base_sha = self._registry_target(registry_repo)
+        path = submission_path(game_id, mod_id)
+        if not self.client.get_file_sha(registry_repo, path, ref=base):
+            raise StorageError(
+                f"{path} does not exist in the registry. Remove the entry manually."
+            )
+        branch = f"workmods/remove-{_slug(game_id)}-{_slug(mod_id)}"
+        self.client.ensure_branch(target, branch, base_sha)
+        self.client.delete_file(
+            target,
+            path,
+            f"Remove {mod_id} ({normalize_game_id(game_id)})",
+            branch=branch,
         )
-        self._report(100, "Removed from the registry.")
+        pr_url = self._open_pull(
+            registry_repo,
+            target,
+            login,
+            base,
+            branch,
+            f"Remove {mod_id} ({normalize_game_id(game_id)})",
+            f"Removes `{path}` so the registry stops listing this mod.\n"
+            f"Requested by @{login}.\n",
+        )
+        self._report(100, "Removal pull request created.")
+        return pr_url
 
 
-__all__ = ["GitHubError", "ModPublisher", "PublishRequest", "PublishResult"]
+def _json_bytes(payload: dict[str, Any]) -> bytes:
+    return (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+__all__ = [
+    "GitHubError",
+    "ModPublisher",
+    "PublishRequest",
+    "PublishResult",
+    "SUBMISSIONS_DIR",
+    "submission_path",
+]
