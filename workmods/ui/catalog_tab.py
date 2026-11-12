@@ -96,7 +96,7 @@ class CatalogTab(QWidget):
         detail_layout.setContentsMargins(20, 20, 20, 20)
         detail_layout.setSpacing(16)
 
-        self.banner_label = CoverLabel(radius=12, placeholder="NO COVER")
+        self.banner_label = CoverLabel(radius=12, placeholder=self.loc.t("no_cover", "NO COVER"))
         self.banner_label.setFixedHeight(168)
 
         info_layout = QHBoxLayout()
@@ -202,7 +202,7 @@ class CatalogTab(QWidget):
         self.list.clear()
         for mod in mods:
             installed = is_mod_installed(self.config.install_dir_for(mod.game_id), mod.id)
-            meta = f"{mod.author or 'Unknown'} · {mod.version_label}"
+            meta = f"{mod.author or self.loc.t('unknown', 'Unknown')} · {mod.version_label}"
             if game_id == ALL_GAMES:
                 game = self.config.game(mod.game_id)
                 meta += f" · {game.name if game else mod.game_id}"
@@ -210,7 +210,14 @@ class CatalogTab(QWidget):
             item.setData(Qt.ItemDataRole.UserRole, mod)
             item.setSizeHint(QSize(0, 62))
             self.list.addItem(item)
-            self.list.setItemWidget(item, ModRow(mod.name, meta, badge="Installed" if installed else ""))
+            self.list.setItemWidget(
+                item,
+                ModRow(
+                    mod.name,
+                    meta,
+                    badge=self.loc.t("badge_installed", "Installed") if installed else "",
+                ),
+            )
             if mod.id == current_id:
                 self.list.setCurrentItem(item)
         self.list.blockSignals(False)
@@ -222,9 +229,14 @@ class CatalogTab(QWidget):
 
     def _show_empty(self) -> None:
         self.title_label.setText(self.loc.t("select_mod", "SELECT A MOD"))
-        self.author_label.setText("Nothing selected yet — pick a mod from the list to preview it.")
+        self.author_label.setText(
+            self.loc.t(
+                "nothing_selected",
+                "Nothing selected yet — pick a mod from the list to preview it.",
+            )
+        )
         self.desc_label.clear()
-        self.banner_label.clear_cover("NO COVER")
+        self.banner_label.clear_cover(self.loc.t("no_cover", "NO COVER"))
         self.icon_label.clear_cover("")
         self._clear_layout(self.tags_row)
         self.btn_install.setEnabled(False)
@@ -262,8 +274,8 @@ class CatalogTab(QWidget):
         game = self.config.game(mod.game_id)
         self.title_label.setText(mod.name)
         self.author_label.setText(
-            f"by {mod.author or 'Unknown'}  ·  {mod.version_label}  ·  "
-            f"{game.name if game else mod.game_id}"
+            f"{self.loc.t('by_author', 'by')} {mod.author or self.loc.t('unknown', 'Unknown')}"
+            f"  ·  {mod.version_label}  ·  {game.name if game else mod.game_id}"
         )
         self.desc_label.setPlainText(mod.description or self.loc.t("no_description", "No description."))
         self._clear_layout(self.tags_row)
@@ -282,7 +294,11 @@ class CatalogTab(QWidget):
         self.btn_folder.setVisible(installed)
         self.btn_folder.setEnabled(installed)
 
-        self.banner_label.clear_cover("LOADING..." if mod.banner_url else "NO COVER")
+        self.banner_label.clear_cover(
+            self.loc.t("loading", "LOADING...")
+            if mod.banner_url
+            else self.loc.t("no_cover", "NO COVER")
+        )
         self.icon_label.clear_cover("" if mod.icon_url else "")
 
         if mod.banner_url:
@@ -344,7 +360,7 @@ class CatalogTab(QWidget):
         worker.deleteLater()
 
     def _on_installed(self, mod: Mod, path: str, dialog: UploadDialog) -> None:
-        dialog.set_status(self.loc.t("installed", "Installed."), 100)
+        dialog.set_status(self.loc.t("installed_status", "Installed."), 100)
         dialog.accept()
         self.install_finished.emit(mod.id)
         if self.list.currentItem():

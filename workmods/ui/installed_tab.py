@@ -65,7 +65,7 @@ class InstalledTab(QWidget):
         top.addStretch()
         layout.addLayout(top)
 
-        self.section = QLabel(self.loc.t("installed", "INSTALLED MODS"))
+        self.section = QLabel(self.loc.t("installed_mods", "INSTALLED MODS"))
         self.section.setObjectName("sectionTitle")
         layout.addWidget(self.section)
 
@@ -74,7 +74,10 @@ class InstalledTab(QWidget):
         layout.addWidget(self.list, 1)
 
         self.empty_label = QLabel(
-            "No mods installed for this profile.\nBrowse the catalog and hit Install to get started."
+            self.loc.t(
+                "empty_installed",
+                "No mods installed for this profile.\nBrowse the catalog and hit Install to get started.",
+            )
         )
         self.empty_label.setObjectName("emptyState")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -140,7 +143,7 @@ class InstalledTab(QWidget):
         self.list.setVisible(bool(rows))
         self.empty_label.setVisible(not rows)
         self.section.setText(
-            f"{self.loc.t('installed', 'INSTALLED MODS')} ({len(rows)})"
+            f"{self.loc.t('installed_mods', 'INSTALLED MODS')} ({len(rows)})"
         )
 
     def _selected(self) -> tuple[InstalledMod, Path] | None:

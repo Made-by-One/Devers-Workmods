@@ -51,7 +51,9 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 │   ├── publisher.py            # zip → repo → release → submission pull request
 │   ├── oauth.py                # GitHub OAuth callback server
 │   ├── net.py                  # Qt network adapter for the registry
-│   ├── i18n.py                 # localization
+│   ├── i18n.py                 # localization + system language detection
+│   ├── devtools.py             # scaffold / validate / pack (no Qt)
+│   ├── cli.py                  # python -m workmods init|validate|pack
 │   ├── utils.py                # OS helpers
 │   └── ui/                     # PyQt6 widgets only
 │       ├── main_window.py      ├── catalog_tab.py
@@ -62,17 +64,17 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 ├── unity-sdk/
 │   ├── WorkmodsSDK.cs          # drop-in SDK, single file
 │   └── README.md
-├── data/                       # icons + localization (en, ru)
+├── data/                       # icons + localization (en, ru, de, es, fr, zh)
 ├── docs/                       # architecture, schema, guides
 ├── submissions/                # one JSON file per mod (source of truth)
-├── tests/                      # pytest suite (47 tests)
+├── tests/                      # pytest suite (59 tests)
 ├── registry.json               # generated shared catalog
 └── .github/
     ├── scripts/update_registry.py
     └── workflows/update_registry.yml
 ```
 
-Why the split: only `workmods/ui/` imports Qt, and only `github_api`/`storage` touch the network and disk. That makes the interesting logic testable headlessly and lets a CLI or server job reuse it later. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Why the split: only `workmods/ui/` imports Qt, and only `github_api`/`storage` touch the network and disk. That makes the interesting logic testable headlessly and powers the Qt-free `python -m workmods` CLI. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 

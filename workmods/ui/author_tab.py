@@ -71,7 +71,7 @@ class AuthorStudioTab(QWidget):
         account_box = QVBoxLayout(account_card)
         account_box.setContentsMargins(18, 14, 18, 14)
         account_box.setSpacing(10)
-        account_title = QLabel("ACCOUNT")
+        account_title = QLabel(self.loc.t("account", "ACCOUNT"))
         account_title.setObjectName("sectionTitle")
         account_box.addWidget(account_title)
 
@@ -82,12 +82,12 @@ class AuthorStudioTab(QWidget):
         self.avatar_label.setStyleSheet("border-radius: 20px; background: #333;")
         self.avatar_label.hide()
 
-        self.auth_label = QLabel("Not Logged In")
+        self.auth_label = QLabel(self.loc.t("not_logged_in", "Not Logged In"))
         self.auth_label.setObjectName("rowTitle")
 
-        self.btn_auth = QPushButton(load_icon("web"), "LOGIN VIA GITHUB")
+        self.btn_auth = QPushButton(load_icon("web"), self.loc.t("login_github", "LOGIN VIA GITHUB"))
         self.btn_auth.clicked.connect(self._login)
-        self.btn_logout = QPushButton("LOGOUT")
+        self.btn_logout = QPushButton(self.loc.t("logout", "LOGOUT"))
         self.btn_logout.clicked.connect(self._logout)
         self.btn_logout.hide()
 
@@ -99,7 +99,7 @@ class AuthorStudioTab(QWidget):
         account_box.addLayout(auth_layout)
         layout.addWidget(account_card)
 
-        self.section = QLabel("MY MODS")
+        self.section = QLabel(self.loc.t("my_mods", "MY MODS"))
         self.section.setObjectName("sectionTitle")
         layout.addWidget(self.section)
 
@@ -108,7 +108,10 @@ class AuthorStudioTab(QWidget):
         layout.addWidget(self.mod_list, 1)
 
         self.empty_label = QLabel(
-            "No local mods yet.\nCreate a mod, publish it as a pull request and it will show up here."
+            self.loc.t(
+                "empty_author",
+                "No local mods yet.\nCreate a mod, publish it as a pull request and it will show up here.",
+            )
         )
         self.empty_label.setObjectName("emptyState")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -117,22 +120,24 @@ class AuthorStudioTab(QWidget):
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
-        self.btn_new_repo = QPushButton(load_icon("web"), "NEW REPO")
-        self.btn_new_repo.setToolTip("Create a new repository on GitHub")
+        self.btn_new_repo = QPushButton(load_icon("web"), self.loc.t("new_repo", "NEW REPO"))
+        self.btn_new_repo.setToolTip(
+            self.loc.t("new_repo_tooltip", "Create a new repository on GitHub")
+        )
         self.btn_new_repo.clicked.connect(self._create_repo)
 
-        self.btn_create = QPushButton(load_icon("edit"), "CREATE")
+        self.btn_create = QPushButton(load_icon("edit"), self.loc.t("create", "CREATE"))
         self.btn_create.clicked.connect(self._create_mod)
 
-        self.btn_edit = QPushButton(load_icon("edit"), "EDIT")
+        self.btn_edit = QPushButton(load_icon("edit"), self.loc.t("edit", "EDIT"))
         self.btn_edit.clicked.connect(self._edit_mod)
 
         self.btn_folder = QPushButton(load_icon("folder"), "")
-        self.btn_folder.setToolTip("Open Mod Folder")
+        self.btn_folder.setToolTip(self.loc.t("open_mod_folder", "Open Mod Folder"))
         self.btn_folder.clicked.connect(self._open_folder)
         self.btn_folder.setFixedWidth(40)
 
-        self.btn_delete = QPushButton(load_icon("trash"), "DELETE")
+        self.btn_delete = QPushButton(load_icon("trash"), self.loc.t("delete", "DELETE"))
         self.btn_delete.setObjectName("danger")
         self.btn_delete.clicked.connect(self._delete_mod)
 
@@ -168,17 +173,19 @@ class AuthorStudioTab(QWidget):
         self.btn_create.setEnabled(logged_in)
         self.btn_edit.setEnabled(logged_in)
         if self.user_data:
-            self.auth_label.setText(f"Logged in as: {self.user_data.get('login', '?')}")
+            self.auth_label.setText(
+                f"{self.loc.t('logged_in_as', 'Logged in as')}: {self.user_data.get('login', '?')}"
+            )
         elif has_token:
-            self.auth_label.setText("Checking session...")
+            self.auth_label.setText(self.loc.t("checking_session", "Checking session..."))
             self.btn_auth.setVisible(False)
             self.btn_logout.setVisible(True)
         else:
-            self.auth_label.setText("Not Logged In (Read Only)")
+            self.auth_label.setText(self.loc.t("read_only", "Not Logged In (Read Only)"))
 
     # -- account ------------------------------------------------------------
     def _login(self) -> None:
-        self.btn_auth.setText("WAITING FOR BROWSER...")
+        self.btn_auth.setText(self.loc.t("login_waiting", "WAITING FOR BROWSER..."))
         self.btn_auth.setEnabled(False)
 
         self._oauth = OAuthServerThread(parent=self)
@@ -190,14 +197,14 @@ class AuthorStudioTab(QWidget):
     def _on_auth_success(self, token: str) -> None:
         self.config.github_token = token
         self.config.save()
-        self.btn_auth.setText("LOGIN VIA GITHUB")
+        self.btn_auth.setText(self.loc.t("login_github", "LOGIN VIA GITHUB"))
         self.btn_auth.setEnabled(True)
         self._fetch_profile()
 
     def _on_auth_failed(self, message: str) -> None:
-        self.btn_auth.setText("LOGIN VIA GITHUB")
+        self.btn_auth.setText(self.loc.t("login_github", "LOGIN VIA GITHUB"))
         self.btn_auth.setEnabled(True)
-        QMessageBox.critical(self, "Login failed", message)
+        QMessageBox.critical(self, self.loc.t("login_failed", "Login failed"), message)
 
     def _fetch_profile(self) -> None:
         token = self.config.github_token
@@ -231,9 +238,11 @@ class AuthorStudioTab(QWidget):
     def _on_profile_error(self, message: str) -> None:
         if "401" in message or "authenticated" in message.lower():
             self._logout(silent=True)
-            self.auth_label.setText("Session expired — log in again.")
+            self.auth_label.setText(
+                self.loc.t("session_expired", "Session expired — log in again.")
+            )
             return
-        self.auth_label.setText(f"Error: {message}")
+        self.auth_label.setText(f"{self.loc.t('error', 'Error')}: {message}")
 
     def _logout(self, silent: bool = False) -> None:
         self.config.github_token = ""
@@ -243,20 +252,28 @@ class AuthorStudioTab(QWidget):
         self.avatar_label.clear()
         self._apply_auth_state()
         if not silent:
-            QMessageBox.information(self, "Logout", "Logged out successfully.")
+            QMessageBox.information(
+                self, self.loc.t("logout_title", "Logout"), self.loc.t("logout_ok", "Logged out successfully.")
+            )
 
     def _create_repo(self) -> None:
         if not self.config.github_token:
             return
-        name, ok = QInputDialog.getText(self, "New Repository", "Repository Name:")
+        name, ok = QInputDialog.getText(
+            self,
+            self.loc.t("new_repository", "New Repository"),
+            self.loc.t("repository_name", "Repository Name:"),
+        )
         if not ok or not name.strip():
             return
         try:
             GitHubClient(self.config.github_token).create_repo(name.strip())
         except Exception as exc:
-            QMessageBox.critical(self, "Error", str(exc))
+            QMessageBox.critical(self, self.loc.t("error", "Error"), str(exc))
             return
-        QMessageBox.information(self, "Success", "Repository created successfully!")
+        QMessageBox.information(
+            self, self.loc.t("success", "Success"), self.loc.t("repo_created", "Repository created successfully!")
+        )
         self._fetch_profile()
 
     # -- my mods ------------------------------------------------------------
@@ -288,7 +305,11 @@ class AuthorStudioTab(QWidget):
                 ModRow(
                     mod.display_name,
                     f"{mod.version_label}  ·  {game.name if game else mod.game_id}",
-                    badge="Published" if published else "Local",
+                    badge=(
+                        self.loc.t("badge_published", "Published")
+                        if published
+                        else self.loc.t("badge_local", "Local")
+                    ),
                 ),
             )
             self._rows[key] = (mod, install_root)
@@ -297,7 +318,7 @@ class AuthorStudioTab(QWidget):
         self.mod_list.blockSignals(False)
         self.mod_list.setVisible(bool(rows))
         self.empty_label.setVisible(not rows)
-        self.section.setText(f"MY MODS ({len(rows)})")
+        self.section.setText(f"{self.loc.t('my_mods', 'MY MODS')} ({len(rows)})")
 
     def _selected_key(self) -> str:
         item = self.mod_list.currentItem()
@@ -330,6 +351,7 @@ class AuthorStudioTab(QWidget):
             self,
             repos=self.user_repos,
             author=str(self.user_data.get("login") or ""),
+            loc=self.loc,
         )
         dialog.saved.connect(self._on_mod_changed)
         dialog.published.connect(self._on_mod_changed)
@@ -348,6 +370,7 @@ class AuthorStudioTab(QWidget):
             repos=self.user_repos,
             is_published=self._is_published(installed.mod_id),
             author=str(self.user_data.get("login") or installed.author),
+            loc=self.loc,
         )
         dialog.saved.connect(self._on_mod_changed)
         dialog.published.connect(self._on_mod_changed)
@@ -365,8 +388,8 @@ class AuthorStudioTab(QWidget):
         mod, install_root = selected
         answer = QMessageBox.question(
             self,
-            "Delete",
-            f"Delete '{mod.mod_id}' locally?\n\n{mod.path}",
+            self.loc.t("delete_local_title", "Delete"),
+            f"{self.loc.t('delete_mod_confirm', 'Delete this mod locally?')}\n\n{mod.path}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
@@ -374,7 +397,7 @@ class AuthorStudioTab(QWidget):
         try:
             uninstall_mod(install_root, mod.mod_id)
         except Exception as exc:
-            QMessageBox.critical(self, "Error", str(exc))
+            QMessageBox.critical(self, self.loc.t("error", "Error"), str(exc))
             return
         self.refresh_data()
         self.mods_changed.emit(mod.mod_id)

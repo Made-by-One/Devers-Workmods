@@ -27,9 +27,10 @@ from PyQt6.QtWidgets import (
 )
 
 from workmods.config import REGISTRY_REPO, WorkmodsConfig
+from workmods.i18n import Localization
 from workmods.models import Mod, normalize_game_id
 from workmods.publisher import PublishRequest
-from workmods.storage import write_mod_meta
+from workmods.storage import read_mod_meta, write_mod_meta
 from workmods.ui.widgets import UploadDialog
 from workmods.ui.workers import PublishWorker, UnpublishWorker
 
@@ -46,8 +47,10 @@ class ModEditorDialog(QDialog):
         repos: list[str] | None = None,
         is_published: bool = False,
         author: str = "",
+        loc: Localization | None = None,
     ):
         super().__init__(parent)
+        self.loc = loc or Localization("en")
         self.config = config
         self.mod = mod or Mod(id=str(uuid.uuid4())[:8])
         self.repos = repos or []
@@ -60,7 +63,7 @@ class ModEditorDialog(QDialog):
         self._publish_worker: PublishWorker | None = None
         self._unpublish_worker: UnpublishWorker | None = None
 
-        self.setWindowTitle("Mod Editor")
+        self.setWindowTitle(self.loc.t("mod_editor", "Mod Editor"))
         self.resize(560, 840)
         self._build_ui()
         self._load_existing()
@@ -79,7 +82,7 @@ class ModEditorDialog(QDialog):
         layout.setSpacing(10)
 
         self.repo_combo = QComboBox()
-        self.repo_combo.addItem("Local Only (No Repo)", "")
+        self.repo_combo.addItem(self.loc.t("local_only", "Local Only (No Repo)"), "")
         for repo in self.repos:
             name = repo["full_name"] if isinstance(repo, dict) else str(repo)
             self.repo_combo.addItem(name, name)
@@ -90,8 +93,11 @@ class ModEditorDialog(QDialog):
         self.game_combo = QComboBox()
         self.game_combo.setEditable(True)
         self.game_combo.setToolTip(
-            "Target game. Pick a configured profile or type a new game id.\n"
-            "The mod is installed into that game's install directory."
+            self.loc.t(
+                "target_game_tooltip",
+                "Target game. Pick a configured profile or type a new game id.\n"
+                "The mod is installed into that game's install directory.",
+            )
         )
         for game in self.config.games:
             self.game_combo.addItem(game.display_name, game.id)
@@ -101,7 +107,9 @@ class ModEditorDialog(QDialog):
 
         self.name_input = QLineEdit(self.mod.name if self.mod.name != self.mod.id else "")
         self.author_input = QLineEdit(self.author)
-        self.author_input.setPlaceholderText("Your name / GitHub handle")
+        self.author_input.setPlaceholderText(
+            self.loc.t("author_placeholder", "Your name / GitHub handle")
+        )
 
         self.desc_input = QTextEdit()
         self.desc_input.setPlainText(self.mod.description)
@@ -109,28 +117,30 @@ class ModEditorDialog(QDialog):
 
         self.version_input = QLineEdit(self.mod.version or "1.0.0")
         self.tags_input = QLineEdit(", ".join(self.mod.tags))
-        self.tags_input.setPlaceholderText("shaders, weapons, ui")
+        self.tags_input.setPlaceholderText(self.loc.t("tags_placeholder", "shaders, weapons, ui"))
         self.entry_asset_input = QLineEdit(self.mod.entry_asset)
-        self.entry_asset_input.setPlaceholderText("Optional default asset name for the Unity SDK")
+        self.entry_asset_input.setPlaceholderText(
+            self.loc.t("entry_asset_placeholder", "Optional default asset name for the Unity SDK")
+        )
 
         preview_style = (
             "border: 1px solid #262636; border-radius: 10px; "
             "background: #0c0c14; color: #6f6f88;"
         )
-        self.icon_preview = QLabel("No Icon")
+        self.icon_preview = QLabel(self.loc.t("no_icon", "No Icon"))
         self.icon_preview.setFixedSize(64, 64)
         self.icon_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.icon_preview.setStyleSheet(preview_style)
-        self.banner_preview = QLabel("No Banner")
+        self.banner_preview = QLabel(self.loc.t("no_banner", "No Banner"))
         self.banner_preview.setFixedSize(300, 100)
         self.banner_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.banner_preview.setStyleSheet(preview_style)
 
-        self.btn_icon = QPushButton("SELECT ICON")
+        self.btn_icon = QPushButton(self.loc.t("select_icon", "SELECT ICON"))
         self.btn_icon.clicked.connect(lambda: self._pick_image("icon"))
-        self.btn_banner = QPushButton("SELECT BANNER")
+        self.btn_banner = QPushButton(self.loc.t("select_banner", "SELECT BANNER"))
         self.btn_banner.clicked.connect(lambda: self._pick_image("banner"))
-        self.btn_files = QPushButton("SELECT MOD FILES FOLDER")
+        self.btn_files = QPushButton(self.loc.t("select_mod_files", "SELECT MOD FILES FOLDER"))
         self.btn_files.clicked.connect(self._pick_files_folder)
         for button in (self.btn_icon, self.btn_banner, self.btn_files):
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -138,20 +148,20 @@ class ModEditorDialog(QDialog):
         form = QFormLayout()
         form.setHorizontalSpacing(16)
         form.setVerticalSpacing(10)
-        form.addRow("GitHub Repository:", self.repo_combo)
-        form.addRow("Mod ID (Auto):", self.id_input)
-        form.addRow("Target Game:", self.game_combo)
-        form.addRow("Mod Name:", self.name_input)
-        form.addRow("Author:", self.author_input)
-        form.addRow("Description:", self.desc_input)
-        form.addRow("Version:", self.version_input)
-        form.addRow("Tags:", self.tags_input)
-        form.addRow("Entry Asset:", self.entry_asset_input)
-        form.addRow("Icon:", self.btn_icon)
-        form.addRow("Preview:", self.icon_preview)
-        form.addRow("Banner:", self.btn_banner)
-        form.addRow("Preview:", self.banner_preview)
-        form.addRow("Files Folder:", self.btn_files)
+        form.addRow(self.loc.t("repository", "GitHub Repository:"), self.repo_combo)
+        form.addRow(self.loc.t("mod_id_auto", "Mod ID (Auto):"), self.id_input)
+        form.addRow(self.loc.t("target_game", "Target Game:"), self.game_combo)
+        form.addRow(self.loc.t("mod_name", "Mod Name:"), self.name_input)
+        form.addRow(self.loc.t("author_label", "Author:"), self.author_input)
+        form.addRow(self.loc.t("description", "Description:"), self.desc_input)
+        form.addRow(self.loc.t("version", "Version:"), self.version_input)
+        form.addRow(self.loc.t("tags", "Tags:"), self.tags_input)
+        form.addRow(self.loc.t("entry_asset", "Entry Asset:"), self.entry_asset_input)
+        form.addRow(self.loc.t("icon", "Icon:"), self.btn_icon)
+        form.addRow(self.loc.t("preview", "Preview:"), self.icon_preview)
+        form.addRow(self.loc.t("banner", "Banner:"), self.btn_banner)
+        form.addRow(self.loc.t("preview", "Preview:"), self.banner_preview)
+        form.addRow(self.loc.t("files_folder", "Files Folder:"), self.btn_files)
 
         layout.addLayout(form)
         layout.addStretch()
@@ -160,16 +170,18 @@ class ModEditorDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.setSpacing(10)
-        save_btn = QPushButton("SAVE MOD")
+        save_btn = QPushButton(self.loc.t("save_mod", "SAVE MOD"))
         save_btn.clicked.connect(self.save_mod)
 
         self.btn_publish = QPushButton(
-            "UPDATE ON GITHUB" if self.is_published else "PUBLISH & REQUEST ADDITION"
+            self.loc.t("update_github", "UPDATE ON GITHUB")
+            if self.is_published
+            else self.loc.t("publish_request", "PUBLISH & REQUEST ADDITION")
         )
         self.btn_publish.setObjectName("primary")
         self.btn_publish.clicked.connect(self.publish_mod)
 
-        self.btn_unpublish = QPushButton("UNPUBLISH")
+        self.btn_unpublish = QPushButton(self.loc.t("unpublish", "UNPUBLISH"))
         self.btn_unpublish.setObjectName("danger")
         self.btn_unpublish.clicked.connect(self.unpublish_mod)
         self.btn_unpublish.setVisible(self.is_published)
@@ -189,13 +201,13 @@ class ModEditorDialog(QDialog):
             self.icon_preview.setPixmap(
                 QPixmap(self.icon_path).scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio)
             )
-            self.btn_icon.setText("ICON: icon.png")
+            self.btn_icon.setText(f"{self.loc.t('icon', 'Icon:').rstrip(':')}: icon.png")
         if (target / "banner.png").is_file():
             self.banner_path = str(target / "banner.png")
             self.banner_preview.setPixmap(
                 QPixmap(self.banner_path).scaled(300, 100, Qt.AspectRatioMode.KeepAspectRatio)
             )
-            self.btn_banner.setText("BANNER: banner.png")
+            self.btn_banner.setText(f"{self.loc.t('banner', 'Banner:').rstrip(':')}: banner.png")
 
     # -- field helpers ------------------------------------------------------
     def selected_game_id(self) -> str:
@@ -209,8 +221,9 @@ class ModEditorDialog(QDialog):
         return str(data or "").strip()
 
     def _pick_image(self, kind: str) -> None:
+        title = self.loc.t("select_icon" if kind == "icon" else "select_banner")
         filename, _ = QFileDialog.getOpenFileName(
-            self, f"Select {kind}", "", "Images (*.png *.jpg *.jpeg *.ico)"
+            self, title, "", "Images (*.png *.jpg *.jpeg *.ico)"
         )
         if not filename:
             return
@@ -219,19 +232,65 @@ class ModEditorDialog(QDialog):
             self.icon_preview.setPixmap(
                 QPixmap(filename).scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio)
             )
-            self.btn_icon.setText(f"ICON: {Path(filename).name}")
+            self.btn_icon.setText(
+                f"{self.loc.t('icon', 'Icon:').rstrip(':')}: {Path(filename).name}"
+            )
         else:
             self.banner_path = filename
             self.banner_preview.setPixmap(
                 QPixmap(filename).scaled(300, 100, Qt.AspectRatioMode.KeepAspectRatio)
             )
-            self.btn_banner.setText(f"BANNER: {Path(filename).name}")
+            self.btn_banner.setText(
+                f"{self.loc.t('banner', 'Banner:').rstrip(':')}: {Path(filename).name}"
+            )
 
     def _pick_files_folder(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Select Folder with Mod Files")
+        directory = QFileDialog.getExistingDirectory(
+            self, self.loc.t("select_mod_files", "SELECT MOD FILES FOLDER")
+        )
         if directory:
             self.mod_files_dir = directory
-            self.btn_files.setText(f"FILES: {Path(directory).name}")
+            self.btn_files.setText(f"{Path(directory).name}")
+            self._import_manifest(directory)
+
+    def _import_manifest(self, directory: str) -> None:
+        """Prefill empty fields from a mod-authored ``workmod.json``."""
+        manifest = read_mod_meta(directory)
+        if not manifest:
+            return
+        imported = False
+        if not self.name_input.text().strip() and manifest.get("name"):
+            self.name_input.setText(str(manifest["name"]))
+            imported = True
+        current_version = self.version_input.text().strip()
+        if manifest.get("version") and current_version in ("", "1.0.0"):
+            self.version_input.setText(str(manifest["version"]))
+            imported = True
+        if not self.author_input.text().strip() and manifest.get("author"):
+            self.author_input.setText(str(manifest["author"]))
+            imported = True
+        if not self.desc_input.toPlainText().strip() and manifest.get("description"):
+            self.desc_input.setPlainText(str(manifest["description"]))
+            imported = True
+        if not self.entry_asset_input.text().strip() and manifest.get("entry_asset"):
+            self.entry_asset_input.setText(str(manifest["entry_asset"]))
+            imported = True
+        if not self.tags_input.text().strip() and manifest.get("tags"):
+            tags = manifest["tags"]
+            if isinstance(tags, str):
+                tags = [t.strip() for t in tags.split(",") if t.strip()]
+            self.tags_input.setText(", ".join(str(tag) for tag in tags))
+            imported = True
+        game_id = normalize_game_id(manifest.get("game_id"))
+        if manifest.get("game_id") and self.game_combo.findData(game_id) < 0:
+            self.game_combo.addItem(game_id, game_id)
+        if manifest.get("game_id") and self.selected_game_id() != game_id:
+            index = self.game_combo.findData(game_id)
+            if index >= 0 and self.mod.game_id == self._original_game_id:
+                self.game_combo.setCurrentIndex(index)
+                imported = True
+        if imported:
+            self.btn_files.setToolTip(self.loc.t("imported_metadata", "Imported metadata from workmod.json."))
 
     def _collect_request(self) -> PublishRequest:
         return PublishRequest(
@@ -254,10 +313,10 @@ class ModEditorDialog(QDialog):
     def _persist(self) -> Path:
         mod_id = self.id_input.text().strip()
         if not mod_id:
-            raise ValueError("Mod id is missing.")
+            raise ValueError(self.loc.t("mod_id_missing", "Mod id is missing."))
         name = self.name_input.text().strip()
         if not name:
-            raise ValueError("Mod Name is required.")
+            raise ValueError(self.loc.t("name_required", "Mod Name is required."))
 
         game_id = self.selected_game_id()
         self.config.ensure_game(game_id)
@@ -274,7 +333,9 @@ class ModEditorDialog(QDialog):
             and old_target.resolve() != target.resolve()
         ):
             if target.exists() and any(target.iterdir()):
-                raise ValueError(f"A different mod already exists at {target}. Delete it first.")
+                raise ValueError(
+                    f"{self.loc.t('mod_exists', 'A different mod already exists at this path. Delete it first.')}\n{target}"
+                )
             if target.exists():
                 target.rmdir()
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -313,33 +374,70 @@ class ModEditorDialog(QDialog):
         try:
             target = self._persist()
         except Exception as exc:
-            QMessageBox.critical(self, "Error", f"Failed to save mod:\n{exc}")
+            QMessageBox.critical(
+                self,
+                self.loc.t("error", "Error"),
+                f"{self.loc.t('save_failed', 'Failed to save mod:')}\n{exc}",
+            )
             return
         self.saved.emit(self.mod.id)
-        QMessageBox.information(self, "Saved", f"Mod saved to:\n{target}")
+        QMessageBox.information(
+            self,
+            self.loc.t("saved", "Saved"),
+            f"{self.loc.t('saved', 'Saved')}:\n{target}",
+        )
 
     # -- publishing ---------------------------------------------------------
     def publish_mod(self) -> None:
         if not self.config.github_token:
-            QMessageBox.warning(self, "Error", "Log in with GitHub first.")
+            QMessageBox.warning(
+                self, self.loc.t("error", "Error"), self.loc.t("login_first", "Log in with GitHub first.")
+            )
+            return
+
+        if not self.name_input.text().strip():
+            QMessageBox.warning(
+                self,
+                self.loc.t("error", "Error"),
+                self.loc.t("name_required", "Mod Name is required."),
+            )
+            return
+        if not self.version_input.text().strip():
+            QMessageBox.warning(
+                self,
+                self.loc.t("error", "Error"),
+                self.loc.t("version_required", "Version is required."),
+            )
             return
 
         request = self._collect_request()
         if not request.repo:
-            QMessageBox.warning(self, "Error", "Select a GitHub repository for this mod.")
+            QMessageBox.warning(
+                self,
+                self.loc.t("error", "Error"),
+                self.loc.t("select_repo_error", "Select a GitHub repository for this mod."),
+            )
             return
         if not self.mod_files_dir or not Path(self.mod_files_dir).is_dir():
-            QMessageBox.warning(self, "Error", "Select a folder with mod files first.")
+            QMessageBox.warning(
+                self,
+                self.loc.t("error", "Error"),
+                self.loc.t("select_files_error", "Select a folder with mod files first."),
+            )
             return
 
         try:
             self._persist()
         except Exception as exc:
-            QMessageBox.critical(self, "Error", f"Failed to save the mod before publishing:\n{exc}")
+            QMessageBox.critical(
+                self,
+                self.loc.t("error", "Error"),
+                f"{self.loc.t('save_before_publish_failed', 'Failed to save the mod before publishing:')}\n{exc}",
+            )
             return
 
-        dialog = UploadDialog(self, "Publishing")
-        dialog.set_status("Preparing...", 0)
+        dialog = UploadDialog(self, self.loc.t("publishing", "Publishing"))
+        dialog.set_status(self.loc.t("preparing", "Preparing..."), 0)
         worker = PublishWorker(self.config.github_token, request, self)
         self._publish_worker = worker
         worker.progress.connect(dialog.set_status)
@@ -355,34 +453,39 @@ class ModEditorDialog(QDialog):
         worker.deleteLater()
 
     def _on_published(self, result, dialog: UploadDialog) -> None:
-        dialog.set_status("Published.", 100)
+        dialog.set_status(self.loc.t("published_status", "Published."), 100)
         dialog.accept()
         self.is_published = True
         self.btn_unpublish.setVisible(True)
         self.published.emit(self.mod.id)
         QMessageBox.information(
             self,
-            "Success",
-            "Mod published to your repository.\n\n"
-            f"Release: {result.release_url or result.download_url}\n"
-            f"Registry pull request: {result.pr_url or '(not created)'}\n"
+            self.loc.t("success", "Success"),
+            f"{self.loc.t('publish_success', 'Mod published to your repository.')}\n\n"
+            f"{self.loc.t('release', 'Release:')} {result.release_url or result.download_url}\n"
+            f"{self.loc.t('pull_request', 'Registry pull request:')} "
+            f"{result.pr_url or self.loc.t('not_created', '(not created)')}\n"
             f"SHA-256: {result.sha256}\n\n"
-            "A maintainer reviews the submission; once the pull request is merged "
-            "the registry rebuilds automatically and the mod appears in the catalog.",
+            f"{self.loc.t('publish_success_note', 'A maintainer reviews the submission; once the pull request is merged the registry rebuilds automatically and the mod appears in the catalog.')}",
         )
 
     def _on_publish_failed(self, error: str, dialog: UploadDialog) -> None:
         dialog.accept()
-        QMessageBox.critical(self, "Error", f"Failed to publish:\n{error}")
+        QMessageBox.critical(
+            self, self.loc.t("error", "Error"), f"{self.loc.t('failed_publish', 'Failed to publish:')}\n{error}"
+        )
 
     def unpublish_mod(self) -> None:
         if not self.config.github_token:
             return
         answer = QMessageBox.question(
             self,
-            "Unpublish",
-            "Open a pull request that removes this mod from the shared registry?\n\n"
-            "Your GitHub repository, files and release stay online.",
+            self.loc.t("unpublish", "UNPUBLISH"),
+            self.loc.t(
+                "unpublish_confirm",
+                "Open a pull request that removes this mod from the shared registry?\n\n"
+                "Your GitHub repository, files and release stay online.",
+            ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
@@ -396,7 +499,9 @@ class ModEditorDialog(QDialog):
         )
         self._unpublish_worker = worker
         worker.succeeded.connect(self._on_unpublished)
-        worker.failed.connect(lambda error: QMessageBox.critical(self, "Error", error))
+        worker.failed.connect(
+            lambda error: QMessageBox.critical(self, self.loc.t("error", "Error"), error)
+        )
         worker.finished.connect(lambda: self._release_unpublish_worker(worker))
         worker.start()
 
@@ -411,10 +516,10 @@ class ModEditorDialog(QDialog):
         self.published.emit(self.mod.id)
         QMessageBox.information(
             self,
-            "Removal requested",
-            "Removal pull request created:\n"
-            f"{pr_url or '(see the registry repository)'}\n\n"
-            "The mod disappears from the catalog after a maintainer merges it.",
+            self.loc.t("removal_requested", "Removal requested"),
+            f"{self.loc.t('removal_created', 'Removal pull request created:')}\n"
+            f"{pr_url or self.loc.t('see_registry_repo', '(see the registry repository)')}\n\n"
+            f"{self.loc.t('removal_note', 'The mod disappears from the catalog after a maintainer merges it.')}",
         )
 
 

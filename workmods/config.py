@@ -37,7 +37,7 @@ DEFAULT_REGISTRY_URL = (
 # --- OAuth application ------------------------------------------------------
 # A desktop OAuth app cannot keep a client secret truly confidential. These
 # values are only defaults so existing installs keep working; deployments should
-# override them through the environment (see docs/SECURITY.md).
+# override them through the environment.
 GITHUB_CLIENT_ID = os.environ.get("WORKMODS_GITHUB_CLIENT_ID", "Ov23liTU4bp8UkRw1Wco")
 GITHUB_CLIENT_SECRET = os.environ.get(
     "WORKMODS_GITHUB_CLIENT_SECRET", "876493fead76f7880f20e51c7dc072832e4980e2"
@@ -62,7 +62,8 @@ class WorkmodsConfig:
     """User configuration with one install directory per game."""
 
     registry_url: str = DEFAULT_REGISTRY_URL
-    language: str = "en"
+    # Empty means "not chosen yet": the UI falls back to the system language.
+    language: str = ""
     github_token: str = ""
     active_game_id: str = DEFAULT_GAME_ID
     games: list[Game] = field(
@@ -170,7 +171,7 @@ class WorkmodsConfig:
 
         cfg = cls(
             registry_url=str(data.get("registry_url") or DEFAULT_REGISTRY_URL),
-            language=str(data.get("language") or "en"),
+            language=str(data.get("language") or ""),
             github_token=str(data.get("github_token") or ""),
             active_game_id=normalize_game_id(data.get("active_game_id")),
             games=games,

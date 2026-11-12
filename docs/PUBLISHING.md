@@ -50,6 +50,29 @@ Guidelines:
 Everything except the content itself is optional, but `name` and `version` are
 required by the client when publishing.
 
+## Terminal workflow (optional)
+
+The desktop editor is enough, but the same helpers are available from a shell or
+CI. The CLI imports no Qt, so it runs on a build machine without a display.
+
+```bash
+# Create a folder with a filled-in workmod.json and a fresh id
+python -m workmods init neon-ui --name "Neon UI" --game space-rangers --author your-handle
+
+# Check required fields, listed bundles and missing content before uploading
+python -m workmods validate neon-ui
+
+# Build the release ZIP and print its SHA-256 (same packaging as the publisher)
+python -m workmods pack neon-ui --out dist/neon-ui.zip
+```
+
+Add `--json` to `validate` or `pack` for machine-readable output; both commands
+exit non-zero on validation errors, so they work as a pre-commit or CI gate.
+
+When you pick a **Files Folder** in the editor, a `workmod.json` in that folder
+automatically fills any fields you have not typed yet (name, version, author,
+description, tags, entry asset and game).
+
 ## 2. Create the repository
 
 1. Start Workmods, open **Author Studio**.
