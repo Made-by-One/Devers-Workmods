@@ -3,6 +3,16 @@
 All notable changes to Workmods. The format follows Keep a Changelog and the
 project uses legacy letter suffixes for the early beta releases.
 
+## [1.3b] — 2026-11-23
+
+### Fixed
+
+- The editor preserves saved icons and banners when you save again, change image formats, or move a mod to another game profile.
+- The updater finds published betas and orders versions with letter suffixes correctly.
+- The Unity SDK clears cached AssetBundle handles and assembly references when the mod folder or game filter changes.
+- Release builds reject tags that disagree with the client version. Release
+  notes link to documentation at the build commit.
+
 ## [1.2b] — 2026-11-12
 
 Beta release focused on mod media and editor usability.

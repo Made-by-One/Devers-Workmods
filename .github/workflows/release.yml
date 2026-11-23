@@ -216,19 +216,9 @@ jobs:
             Public beta of Workmods.
 
             **Highlights**
-            - Settings → Application Updates: check, verify, install and roll back.
-            - Installed → Mod Profile: enabled/disabled sets, settings presets,
-              JSON export/import, and real on-disk enable/disable.
-            - `SHA256SUMS` on every release; `SHA256SUMS.sig` when the signing secret
-              is configured.
-            - `validate-package` checks engine, Unity version, platform, client and
-              SDK compatibility declared in `workmod.json`.
-            - Unity SDK example and smoke suite remain included.
-            - Linux builds now use Ubuntu 22.04 so the binary starts on Ubuntu 24.04
-              (the 1.1c artifact required GLIBC_2.43).
-            - Mod editor now keeps long icon/banner file names from pushing the
-              layout out of bounds and supports GIF icons and banners, including
-              animated covers in the catalog.
+            - The editor preserves saved icons and banners when you save again, change image formats, or move a mod to another game profile.
+            - The updater finds published betas and orders versions with letter suffixes correctly.
+            - The Unity SDK clears cached AssetBundle handles and assembly references when the mod folder or game filter changes.
 
             **Downloads**
             - Windows x64: `Workmods-windows-x86_64.zip`

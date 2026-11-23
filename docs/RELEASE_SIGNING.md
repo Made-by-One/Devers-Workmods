@@ -58,7 +58,7 @@ The CLI accepts the same key explicitly:
 ```bash
 python -m workmods update check --public-key release-public-key.pem
 python -m workmods update apply Workmods-linux-x86_64.tar.gz \
-  --public-key release-public-key.pem --version 1.2b
+  --public-key release-public-key.pem --version 1.3b
 ```
 
 ## Verify manually
