@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import sys
@@ -110,10 +111,19 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def _version_key(value: Any) -> tuple[int, ...]:
-    text = str(value or "").strip().lower().lstrip("v")
-    numbers = [int(part) for part in __import__("re").findall(r"\d+", text)]
-    return tuple(numbers) if numbers else (0,)
+def _version_key(value: Any) -> tuple[int, int, int, int, int]:
+    # Historic release tags use a/b/c/d suffixes, e.g. v1.1d.
+    match = re.fullmatch(
+        r"v?(\d+)\.(\d+)(?:\.(\d+))?(?:([a-d])|-(alpha|beta|rc)(?:\.(\d+))?)?",
+        str(value or "").strip().lower(),
+    )
+    if match is None:
+        return (0, 0, 0, 0, 0)
+    major, minor, patch, legacy, stage, iteration = match.groups()
+    rank = {"alpha": 1, "beta": 2, "rc": 5, None: 6}[stage]
+    if legacy:
+        rank = ord(legacy) - ord("a") + 1
+    return (int(major), int(minor), int(patch or 0), rank, int(iteration or 0))
 
 
 def is_newer(candidate: Any, current: Any = APP_VERSION) -> bool:
@@ -226,14 +236,24 @@ class GitHubReleaseClient:
         return headers
 
     def latest_release(self) -> ReleaseInfo:
-        url = f"{self.api_base}/repos/{self.repo}/releases/latest"
+        url = f"{self.api_base}/repos/{self.repo}/releases?per_page=100"
+        latest = None
         try:
-            response = requests.get(url, headers=self._headers(), timeout=self.timeout)
-            response.raise_for_status()
-            payload = response.json()
-        except Exception as exc:
-            raise UpdateError(f"cannot fetch latest release: {exc}") from exc
-        return self._parse_release(payload)
+            while url:
+                response = requests.get(url, headers=self._headers(), timeout=self.timeout)
+                response.raise_for_status()
+                for payload in response.json():
+                    version = payload.get("tag_name")
+                    if payload.get("draft") or not is_newer(version, ""):
+                        continue
+                    if latest is None or is_newer(version, latest.version):
+                        latest = self._parse_release(payload)
+                url = response.links.get("next", {}).get("url")
+        except (requests.RequestException, ValueError, TypeError, AttributeError) as exc:
+            raise UpdateError(f"cannot fetch releases: {exc}") from exc
+        if latest is None:
+            raise UpdateError("no published Workmods release found")
+        return latest
 
     def release_by_tag(self, tag: str) -> ReleaseInfo:
         url = f"{self.api_base}/repos/{self.repo}/releases/tags/{tag}"

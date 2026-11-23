@@ -81,8 +81,8 @@ internal static class WorkmodsSDKTests
                 "missing mod returns null");
             Check(WorkmodsSDK.GetAssetBundle("missing-mod") == null,
                 "missing mod has no bundle");
-            Check(WorkmodsSDK.GetAssetBundle("game-a-mod") != null,
-                "existing bundle loads through the stub");
+            AssetBundle original = WorkmodsSDK.GetAssetBundle("game-a-mod");
+            Check(original != null, "existing bundle loads through the stub");
 
             CreateMod(root, "late",
                 "{\"id\":\"late\",\"game_id\":\"game-a\",\"name\":\"Late Mod\",\"version\":\"1.0.0\"}",
@@ -98,6 +98,13 @@ internal static class WorkmodsSDKTests
             WorkmodsSDK.Initialize(root, null, true, false);
             Check(WorkmodsSDK.GetInstalledMods().Count == 5,
                 "no game filter discovers every mod");
+            Check(!ReferenceEquals(original, WorkmodsSDK.GetAssetBundle("game-a-mod")),
+                "switching game filters clears cached bundles");
+            AssetBundle cached = WorkmodsSDK.GetAssetBundle("game-a-mod");
+            WorkmodsSDK.Initialize(Path.Combine(root, "missing"), null, true, false);
+            WorkmodsSDK.Initialize(root, null, true, false);
+            Check(!ReferenceEquals(cached, WorkmodsSDK.GetAssetBundle("game-a-mod")),
+                "switching roots clears cached bundles");
 
             Check(WorkmodsSDK.DefaultModsRoot ==
                 Path.Combine(Application.persistentDataPath, "Workmods"),

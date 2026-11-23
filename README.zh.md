@@ -4,7 +4,7 @@
 
 **语言：** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · 中文
 
-**状态：** `v1.2b` —— 重新设计客户端的公开测试版。[下载最新测试版](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.2b)，或先阅读[已知限制](#限制)。
+**状态：** `v1.3b` —— 重新设计客户端的公开测试版。[下载最新测试版](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.3b)，或先阅读[已知限制](#限制)。
 
 Workmods 由三个共享同一格式的部分组成：
 
@@ -33,7 +33,7 @@ Workmods 客户端 ── ZIP + Release ──► 模组仓库
 
 ## 下载
 
-预编译版本发布在 [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.2b)：
+预编译版本发布在 [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.3b)：
 
 | 系统 | 压缩包 |
 |---|---|
@@ -41,15 +41,13 @@ Workmods 客户端 ── ZIP + Release ──► 模组仓库
 | Linux x86_64 | `Workmods-linux-x86_64.tar.gz` |
 | macOS | `Workmods-macos.zip` |
 
-解压后运行 `Workmods.exe`、`Workmods` 或 `Workmods.app`。Python 和 PyQt6 已包含在内。macOS 版本未签名：首次启动请使用**右键 → 打开**。Windows SmartScreen 也可能显示类似提示。
+解压后运行 `Workmods.exe`、`Workmods` 或 `Workmods.app`。Python 和 PyQt6 已包含在内。如果 macOS 版本未签名，首次启动请使用**右键 → 打开**。Windows SmartScreen 也可能显示类似提示。
 
-### 1.2b 新功能
+### 1.3b 新功能
 
-- **设置 → 应用更新**：检查 GitHub Release，验证 `SHA256SUMS` 和可选签名，原子安装，失败时回滚。
-- **已安装 → 模组配置**：启用/禁用集合、设置预设、通过 `.workmods-disabled` 应用、JSON 导出和导入。
-- Release 包含 `SHA256SUMS`，配置签名密钥后还会包含 `SHA256SUMS.sig`。详见 [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md)。
-- Linux 版本基于 Ubuntu 22.04 构建，可在 Ubuntu 24.04 及 glibc 2.35+ 系统上运行。
-- 模组编辑器不再因过长的图标/横幅文件名而打乱布局，并新增 GIF 图标与横幅支持，包括目录中的动画封面。
+- 重复保存、更改图片格式或将模组移至其他游戏配置时，编辑器会保留图标和横幅。
+- 更新程序可以找到已发布的测试版，并正确比较带有字母后缀的版本。
+- 更改模组文件夹或游戏筛选条件时，Unity SDK 会清除 AssetBundle 缓存和程序集引用。
 
 ---
 
@@ -168,7 +166,7 @@ SDK 会记录发现的模组、加载的 bundle 和错误，但不会向游戏�
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 84 个测试，无需显示器
+pytest
 ruff check workmods tests
 ```
 

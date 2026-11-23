@@ -4,7 +4,7 @@
 
 **Languages:** English · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [中文](README.zh.md)
 
-**Status:** `v1.2b` — public beta with a redesigned client. [Download the latest beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.2b) or read
+**Status:** `v1.3b` — public beta with a redesigned client. [Download the latest beta](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.3b) or read
 [Known limitations](#known-limitations-before-public-launch) before relying on it for a real game.
 
 Workmods is three things that share one format:
@@ -72,7 +72,7 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 ├── data/                       # icons + localization (en, ru, de, es, fr, zh)
 ├── docs/                       # architecture, schema, publishing and signing guides
 ├── submissions/                # one JSON file per mod (source of truth)
-├── tests/                      # pytest suite (84 tests)
+├── tests/                      # pytest suite
 ├── registry.json               # generated shared catalog
 └── .github/
     ├── scripts/update_registry.py
@@ -89,7 +89,7 @@ Why the split: only `workmods/ui/` imports Qt, and only `github_api`/`storage` t
 
 ## Download
 
-Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.2b):
+Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-One/Devers-Workmods/releases/tag/v1.3b):
 
 | System | Archive |
 |---|---|
@@ -97,19 +97,13 @@ Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-O
 | Linux x86_64 | `Workmods-linux-x86_64.tar.gz` |
 | macOS | `Workmods-macos.zip` |
 
-Unpack the archive and run `Workmods.exe`, `Workmods` or `Workmods.app`. The builds are self-contained: Python and PyQt6 are included. The macOS build is unsigned, so use **Right click → Open** on first launch; Windows SmartScreen may show a similar warning.
+Unpack the archive and run `Workmods.exe`, `Workmods` or `Workmods.app`. The builds are self-contained: Python and PyQt6 are included. If the macOS build is unsigned, use **Right click → Open** on first launch; Windows SmartScreen may show a similar warning.
 
-### What's new in 1.2b
+### What's new in 1.3b
 
-- **Settings → Application Updates** checks the latest GitHub release, verifies
-  `SHA256SUMS` and an optional RSA/ECDSA signature, installs atomically and keeps
-  a backup you can roll back from the same card.
-- **Installed → Mod Profile** saves enabled/disabled sets and settings presets,
-  applies them by moving mods to `.workmods-disabled`, and exports/imports JSON.
-- Release assets now include `SHA256SUMS` and, when the signing secret is set,
-  `SHA256SUMS.sig`. See [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
-- Linux builds use Ubuntu 22.04, so the binary runs on Ubuntu 24.04 and other glibc 2.35+ systems.
-- Mod editor keeps long icon/banner file names from pushing the layout out of bounds and now supports GIF icons and banners, including animated covers in the catalog.
+- The editor preserves saved icons and banners when you save again, change image formats, or move a mod to another game profile.
+- The updater finds published betas and orders versions with letter suffixes correctly.
+- The Unity SDK clears cached AssetBundle handles and assembly references when the mod folder or game filter changes.
 
 ---
 
@@ -264,7 +258,7 @@ Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: 
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 84 tests, no display required
+pytest
 ruff check workmods tests
 ```
 

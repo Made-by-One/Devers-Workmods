@@ -326,7 +326,14 @@ namespace Workmods
         public static void Initialize(string modsRoot = null, string gameId = null,
             bool verboseLogging = true, bool writeLogToFile = false)
         {
-            ModsRoot = string.IsNullOrEmpty(modsRoot) ? DefaultModsRoot : modsRoot;
+            string root = string.IsNullOrEmpty(modsRoot) ? DefaultModsRoot : modsRoot;
+            if (IsInitialized &&
+                (!string.Equals(ModsRoot, root, StringComparison.Ordinal) ||
+                 !string.Equals(GameId, gameId, StringComparison.OrdinalIgnoreCase)))
+            {
+                UnloadAll();
+            }
+            ModsRoot = root;
             GameId = gameId;
             WorkmodsLog.Verbose = verboseLogging;
             WorkmodsLog.WriteToFile = writeLogToFile;
