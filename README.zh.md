@@ -41,7 +41,7 @@ Workmods 客户端 ── ZIP + Release ──► 模组仓库
 | Linux x86_64 | `Workmods-linux-x86_64.tar.gz` |
 | macOS | `Workmods-macos.zip` |
 
-解压后运行 `Workmods.exe`、`Workmods` 或 `Workmods.app`。Python 和 PyQt6 已包含在内。macOS 版本未签名：首次启动请使用**右键 → 打开**。Windows SmartScreen 也可能显示类似提示。
+解压后运行 `Workmods.exe`、`Workmods` 或 `Workmods.app`。Python 和 PyQt6 已包含在内。如果 macOS 版本未签名，首次启动请使用**右键 → 打开**。Windows SmartScreen 也可能显示类似提示。
 
 ### 1.2b 新功能
 
@@ -168,7 +168,7 @@ SDK 会记录发现的模组、加载的 bundle 和错误，但不会向游戏�
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 84 个测试，无需显示器
+pytest
 ruff check workmods tests
 ```
 

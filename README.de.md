@@ -41,7 +41,7 @@ Fertige Builds werden in den [GitHub Releases](https://github.com/Made-by-One/De
 | Linux x86_64 | `Workmods-linux-x86_64.tar.gz` |
 | macOS | `Workmods-macos.zip` |
 
-Archiv entpacken und `Workmods.exe`, `Workmods` oder `Workmods.app` starten. Python und PyQt6 sind enthalten. Der macOS-Build ist nicht signiert: beim ersten Start **Rechtsklick → Öffnen** verwenden. Windows SmartScreen kann ebenfalls warnen.
+Archiv entpacken und `Workmods.exe`, `Workmods` oder `Workmods.app` starten. Python und PyQt6 sind enthalten. Falls der macOS-Build nicht signiert ist, beim ersten Start **Rechtsklick → Öffnen** verwenden. Windows SmartScreen kann ebenfalls warnen.
 
 ### Neu in 1.2b
 
@@ -168,7 +168,7 @@ Vollständige Feldreferenz und Einreichungsformat: [docs/REGISTRY_SCHEMA.md](doc
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 84 Tests, kein Display nötig
+pytest
 ruff check workmods tests
 ```
 

@@ -30,6 +30,10 @@ def _updater(tmp_path: Path, target: Path) -> ClientUpdater:
 def test_is_newer_compares_numeric_parts():
     assert is_newer("1.1b", "1.0b")
     assert is_newer("v2.0.0", "1.9.9")
+    assert is_newer("1.1d", "1.1c")
+    assert is_newer("1.2.0", "1.2b")
+    assert not is_newer("1.2.0-beta.2", "1.2.0")
+    assert not is_newer("1.2.0", "1.2")
     assert not is_newer("1.0b", "1.0b")
     assert not is_newer("0.9", "1.0b")
 
@@ -124,3 +128,27 @@ def test_download_rejects_release_without_asset(tmp_path):
     release = ReleaseInfo(tag_name="v1.1b", version="1.1b")
     with pytest.raises(UpdateError):
         updater.download_release(release)
+
+def test_release_lookup_includes_prereleases_and_skips_drafts(monkeypatch, tmp_path):
+    class Response:
+        def __init__(self, payload, next_url=None):
+            self.payload = payload
+            self.links = {"next": {"url": next_url}} if next_url else {}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.payload
+
+    def get(url, **kwargs):
+        if "page=2" in url:
+            return Response([{"tag_name": "v1.2b", "prerelease": True}])
+        assert url.endswith("/releases?per_page=100")
+        return Response(
+            [{"tag_name": "v9.0.0", "draft": True}, {"tag_name": "v1.1d"}],
+            "https://api.github.com/test/releases?page=2",
+        )
+
+    monkeypatch.setattr("workmods.updater.requests.get", get)
+    assert _updater(tmp_path, tmp_path / "Workmods").release_client.latest_release().tag_name == "v1.2b"

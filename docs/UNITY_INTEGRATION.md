@@ -52,6 +52,9 @@ actually scanned.
 Disabled mods live in `<modsRoot>/.workmods-disabled/<modId>`. The SDK skips
 directories whose names start with `.`, so **Disable** in the client takes effect
 on the next scan without deleting anything. `Rescan()` after a change.
+Changing the root or game filter through `Initialize()` releases cached bundle
+handles and clears cached assembly references. The Mono runtime retains any
+assemblies already loaded for the lifetime of the application domain.
 
 ## 3. Mod manifest
 

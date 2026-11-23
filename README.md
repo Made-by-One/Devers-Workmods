@@ -72,7 +72,7 @@ Mods live in the modder's own GitHub repository and are distributed through GitH
 ├── data/                       # icons + localization (en, ru, de, es, fr, zh)
 ├── docs/                       # architecture, schema, publishing and signing guides
 ├── submissions/                # one JSON file per mod (source of truth)
-├── tests/                      # pytest suite (84 tests)
+├── tests/                      # pytest suite
 ├── registry.json               # generated shared catalog
 └── .github/
     ├── scripts/update_registry.py
@@ -97,7 +97,7 @@ Prebuilt clients are published in [GitHub Releases](https://github.com/Made-by-O
 | Linux x86_64 | `Workmods-linux-x86_64.tar.gz` |
 | macOS | `Workmods-macos.zip` |
 
-Unpack the archive and run `Workmods.exe`, `Workmods` or `Workmods.app`. The builds are self-contained: Python and PyQt6 are included. The macOS build is unsigned, so use **Right click → Open** on first launch; Windows SmartScreen may show a similar warning.
+Unpack the archive and run `Workmods.exe`, `Workmods` or `Workmods.app`. The builds are self-contained: Python and PyQt6 are included. If the macOS build is unsigned, use **Right click → Open** on first launch; Windows SmartScreen may show a similar warning.
 
 ### What's new in 1.2b
 
@@ -264,7 +264,7 @@ Version 1 documents (`{"mods": [...]}` without `game_id`) are migrated on read: 
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 84 tests, no display required
+pytest
 ruff check workmods tests
 ```
 

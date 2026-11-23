@@ -41,7 +41,7 @@ Les versions compilées sont publiées dans les [GitHub Releases](https://github
 | Linux x86_64 | `Workmods-linux-x86_64.tar.gz` |
 | macOS | `Workmods-macos.zip` |
 
-Décompressez l’archive et lancez `Workmods.exe`, `Workmods` ou `Workmods.app`. Python et PyQt6 sont inclus. La version macOS n’est pas signée : au premier lancement, utilisez **Clic droit → Ouvrir**. Windows SmartScreen peut également afficher un avertissement.
+Décompressez l’archive et lancez `Workmods.exe`, `Workmods` ou `Workmods.app`. Python et PyQt6 sont inclus. Si la version macOS n’est pas signée, utilisez au premier lancement **Clic droit → Ouvrir**. Windows SmartScreen peut également afficher un avertissement.
 
 ### Nouveautés de 1.2b
 
@@ -168,7 +168,7 @@ Référence complète des champs et format des soumissions : [docs/REGISTRY_SCHE
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 84 tests, aucun écran requis
+pytest
 ruff check workmods tests
 ```
 

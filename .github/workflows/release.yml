@@ -33,6 +33,10 @@ jobs:
           PYTHONPATH: .
         run: |
           version="$(python -c "from workmods.config import APP_VERSION; print(APP_VERSION)")"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match APP_VERSION ($version)"
+            exit 1
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Releasing v$version"
 
@@ -209,9 +213,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Workmods ${{ needs.prepare.outputs.version }} — public beta
           body: |
-            Fifth public beta of Workmods. Connects updates and mod profiles to
-            the desktop GUI, adds signed release checksums, fixes the Linux
-            artifact’s glibc compatibility and improves mod media support.
+            Public beta of Workmods.
 
             **Highlights**
             - Settings → Application Updates: check, verify, install and roll back.
@@ -239,11 +241,11 @@ jobs:
             3. Linux: `chmod +x Workmods` before the first launch.
 
             The build is self-contained; Python and PyQt6 are included. The Unity SDK
-            remains a single file: [`unity-sdk/WorkmodsSDK.cs`](https://github.com/Made-by-One/Devers-Workmods/blob/main/unity-sdk/WorkmodsSDK.cs).
+            remains a single file: [`unity-sdk/WorkmodsSDK.cs`](https://github.com/Made-by-One/Devers-Workmods/blob/${{ github.sha }}/unity-sdk/WorkmodsSDK.cs).
 
-            See the [README](https://github.com/Made-by-One/Devers-Workmods#readme) and
-            [CHANGELOG](https://github.com/Made-by-One/Devers-Workmods/blob/main/CHANGELOG.md)
-            for the full 1.2b notes.
+            See the [README](https://github.com/Made-by-One/Devers-Workmods/blob/${{ github.sha }}/README.md) and
+            [CHANGELOG](https://github.com/Made-by-One/Devers-Workmods/blob/${{ github.sha }}/CHANGELOG.md)
+            for release notes and version history.
           files: release-assets/*
           prerelease: true
           fail_on_unmatched_files: true

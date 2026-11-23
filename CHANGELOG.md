@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to Workmods. The format follows Keep a Changelog and the
-project uses semantic versioning.
+project uses legacy letter suffixes for the early beta releases.
 
 ## [1.2b] — 2026-11-12
 
@@ -11,6 +11,10 @@ Beta release focused on mod media and editor usability.
 
 - GIF icons and banners are now supported in the mod editor, local persistence,
   publishing and validation; animated GIF covers play in the catalog.
+- JPEG (`.jpeg`) and ICO files are also accepted as icons and banners.
+
+### Fixed
+
 - Selected icon/banner file names are shown in an elided label so long names do
   not push the editor layout out of bounds.
 

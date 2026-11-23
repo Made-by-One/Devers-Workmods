@@ -451,29 +451,33 @@ class ModEditorDialog(QDialog):
                 target.rmdir()
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(old_target), str(target))
+            for field in ("icon_path", "banner_path"):
+                filename = getattr(self, field)
+                if filename and Path(filename).parent == old_target:
+                    setattr(self, field, str(target / Path(filename).name))
         target.mkdir(parents=True, exist_ok=True)
 
-        # Replace any previously saved icon/banner so a changed format (for
-        # example PNG -> GIF) does not leave a stale file behind.
         for kind in ("icon", "banner"):
+            field = f"{kind}_path"
+            filename = getattr(self, field)
+            if not filename or not Path(filename).is_file():
+                continue
+            source = Path(filename)
+            suffix = source.suffix.lower()
+            if suffix not in self._IMAGE_EXTENSIONS:
+                suffix = ".png"
+            destination = target / f"{kind}{suffix}"
+            if source.resolve() != destination.resolve():
+                temporary = target / f".{kind}-{uuid.uuid4().hex}.tmp"
+                try:
+                    shutil.copy(source, temporary)
+                    temporary.replace(destination)
+                finally:
+                    temporary.unlink(missing_ok=True)
+            setattr(self, field, str(destination))
             for old in target.glob(f"{kind}.*"):
-                if old.is_file() and old.suffix.lower() in self._IMAGE_EXTENSIONS:
+                if old != destination and old.is_file() and old.suffix.lower() in self._IMAGE_EXTENSIONS:
                     old.unlink()
-
-        if self.icon_path and os.path.isfile(self.icon_path):
-            suffix = Path(self.icon_path).suffix.lower()
-            if suffix not in self._IMAGE_EXTENSIONS:
-                suffix = ".png"
-            destination = (target / f"icon{suffix}").resolve()
-            if Path(self.icon_path).resolve() != destination:
-                shutil.copy(self.icon_path, destination)
-        if self.banner_path and os.path.isfile(self.banner_path):
-            suffix = Path(self.banner_path).suffix.lower()
-            if suffix not in self._IMAGE_EXTENSIONS:
-                suffix = ".png"
-            destination = (target / f"banner{suffix}").resolve()
-            if Path(self.banner_path).resolve() != destination:
-                shutil.copy(self.banner_path, destination)
 
         meta = {
             "id": mod_id,
@@ -562,6 +566,8 @@ class ModEditorDialog(QDialog):
 
         dialog = UploadDialog(self, self.loc.t("publishing", "Publishing"))
         dialog.set_status(self.loc.t("preparing", "Preparing..."), 0)
+        request.icon_path = self.icon_path
+        request.banner_path = self.banner_path
         worker = PublishWorker(self.config.github_token, request, self)
         self._publish_worker = worker
         worker.progress.connect(dialog.set_status)

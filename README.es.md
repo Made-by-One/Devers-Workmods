@@ -41,7 +41,7 @@ Las compilaciones se publican en [GitHub Releases](https://github.com/Made-by-On
 | Linux x86_64 | `Workmods-linux-x86_64.tar.gz` |
 | macOS | `Workmods-macos.zip` |
 
-Descomprime el archivo y ejecuta `Workmods.exe`, `Workmods` o `Workmods.app`. Python y PyQt6 están incluidos. La compilación de macOS no está firmada: en el primer inicio usa **Clic derecho → Abrir**. Windows SmartScreen puede mostrar una advertencia similar.
+Descomprime el archivo y ejecuta `Workmods.exe`, `Workmods` o `Workmods.app`. Python y PyQt6 están incluidos. Si la compilación de macOS no está firmada, en el primer inicio usa **Clic derecho → Abrir**. Windows SmartScreen puede mostrar una advertencia similar.
 
 ### Novedades de 1.2b
 
@@ -168,7 +168,7 @@ Referencia completa de campos y formato de solicitud: [docs/REGISTRY_SCHEMA.md](
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 84 pruebas, no requiere pantalla
+pytest
 ruff check workmods tests
 ```
 
